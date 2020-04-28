@@ -7,8 +7,24 @@ using UnityEngine;
 public class SmartScene
 {
     Dictionary < GameObject, List< GameObject > > edges;
+    private Dictionary <GameObject, List < GameObject > > Edges {
+        get {
+            return new Dictionary<GameObject, List<GameObject>> ( edges );
+        }
+    }
+
     Dictionary < GameObject, List< GameObject > > children;
+    private Dictionary < GameObject, List < GameObject > > Children {
+        get {
+            return new Dictionary<GameObject, List<GameObject> > ( children ); 
+        }
+    }
     Dictionary < (GameObject from, GameObject to), List < Attribute > > relations;
+    private Dictionary < (GameObject from, GameObject to), List < Attribute >> Relations {
+        get {
+            return new Dictionary<(GameObject from, GameObject to), List<Attribute>> ( relations );
+        }
+    }
 
     public int Count {
         get {
@@ -62,6 +78,117 @@ public class SmartScene
         children.Remove ( obj );
     }
 
+    public bool AddEdge ( GameObject from, GameObject to ) {
+        AddNode( from );
+        
+        if ( ! edges[ from ].Contains ( to )) {
+            edges[ from ].Add ( to );
+            return true;
+        }
+        return false;
+    }
+
+    public bool RemoveEdge ( GameObject from, GameObject to ) {
+        if ( edges.ContainsKey ( from ) ) {
+            if ( relations.ContainsKey ( ( from, to ) ) ) {
+                relations[ ( from, to ) ].Clear();
+            }
+
+            return edges[ from ].Remove ( to );
+        }
+        return false;
+    }
+
+    public List< GameObject > GetNeighbours ( GameObject from ) {
+        if ( edges.ContainsKey ( from ) ) {
+            return new List < GameObject > ( edges [ from ] );
+        }
+        return null;
+    }
+
+    public bool AddChild ( GameObject parent, GameObject child ) {
+        if ( parent == child ) return false;
+
+        if ( ! children.ContainsKey ( parent ) ) {
+            children.Add ( parent, new List< GameObject > ( ) { child } );
+        }
+        else {
+            children[ parent ].Add ( child );
+        }
+        return true;
+    }
+
+    public List< GameObject > GetChildren ( GameObject parent ) {
+        if ( children.ContainsKey ( parent ) ) {
+            return new List< GameObject > ( children [ parent ] );
+        }
+        return null;
+    }
+
+    public bool RemoveChild ( GameObject parent, GameObject child ) {
+        if ( children.ContainsKey ( parent ) ) {
+            return children[ parent ].Remove ( child );  
+        }
+        return false;
+    }
+
+    public void AddAttribute ( GameObject from, GameObject to, Attribute attr) {
+        AddEdge ( from, to );
+        (GameObject from, GameObject to) key = ( from, to );
+
+        if ( ! relations.ContainsKey ( key ) ) {
+            relations.Add ( key, new List< Attribute > ( ) { attr } );
+        }
+        else {
+            relations [ key ].Add ( attr );
+        }
+    }
+
+    public List< Attribute > GetAttributes ( GameObject from, GameObject to ) {
+        (GameObject from, GameObject to) key = (from, to);
+        
+        if ( relations.ContainsKey ( key ) ) {
+            return new List< Attribute > ( relations [ key ] );
+        }
+        return null;
+    }
+
+    public List< Attribute > GetAttributesByName ( GameObject from, GameObject to, String name) {
+        List< Attribute > res = GetAttributes ( from, to);
+        if ( res != null ) {
+            return res.Where ( x => x.Name == name ).ToList();
+        }
+        return null;
+    }
+
+    public bool RemoveAttribute ( GameObject from, GameObject to, Attribute attr ) {
+        if ( relations.ContainsKey ( ( from, to ) ) ) {
+            return relations[ ( from, to ) ].Remove ( attr );
+        }
+        return false;
+    }
+
+    public void RemoveAttributesByName ( GameObject from, GameObject to, String name ) {
+        if ( relations.ContainsKey ( ( from, to) ) ) {
+            List<Attribute> rel = new List< Attribute> ( relations[ ( from, to) ] );
+            IEnumerable<Attribute> list = 
+                from attr in rel
+                where attr.Name == name
+                select attr;
+
+            foreach ( Attribute attr in list ) {
+                relations[ (from, to ) ].Remove( attr );
+            }
+        }
+    }
+
+    public List< GameObject > GetNodes ( ) {
+        return edges.Keys.ToList();
+    }
+
+
+    
+
     void RemoveRelationsFrom ( GameObject obj ) {
         if ( edges.ContainsKey ( obj ) ) { 
             foreach ( GameObject other in edges[ obj ] ) {
@@ -84,71 +211,5 @@ public class SmartScene
         foreach ( GameObject parent in parents ) {
             children[ parent ].Remove ( obj );
         }
-    }
-
-    public bool AddEdge ( GameObject from, GameObject to ) {
-        AddNode( from );
-        
-        if ( ! edges[ from ].Contains ( to )) {
-            edges[ from ].Add ( to );
-            return true;
-        }
-        return false;
-    }
-
-    public void AddChild ( GameObject parent, GameObject child ) {
-        if ( ! children.ContainsKey ( parent ) ) {
-            children.Add ( parent, new List< GameObject > ( ) { child } );
-        }
-        else {
-            children[ parent ].Add ( child );
-        }
-    }
-
-    public void AddAttribute ( GameObject from, GameObject to, Attribute attr) {
-        AddEdge ( from, to );
-        (GameObject from, GameObject to) key = ( from, to );
-
-        if ( ! relations.ContainsKey ( key ) ) {
-            relations.Add ( key, new List< Attribute > ( ) { attr } );
-        }
-        else {
-            relations [ key ].Add ( attr );
-        }
-    }
-
-    public List< GameObject > GetNeighbours ( GameObject from ) {
-        if ( edges.ContainsKey ( from ) ) {
-            return edges [ from ];
-        }
-        return null;
-    }
-
-    public List< GameObject > GetChildren ( GameObject parent ) {
-        if ( children.ContainsKey ( parent ) ) {
-            return children [ parent ];
-        }
-        return null;
-    }
-
-    public List< Attribute > GetAttributes ( GameObject from, GameObject to ) {
-        (GameObject from, GameObject to) key = (from, to);
-        
-        if ( relations.ContainsKey ( key ) ) {
-            return relations [ key ];
-        }
-        return null;
-    }
-
-    public List< Attribute > GetAttributesByName ( GameObject from, GameObject to, String name) {
-        List< Attribute > res = GetAttributes ( from, to);
-        if ( res != null ) {
-            return res.Where ( x => x.Name == name ).ToList();
-        }
-        return null;
-    }
-
-    public List< GameObject > GetNodes ( ) {
-        return edges.Keys.ToList();
     }
 } 

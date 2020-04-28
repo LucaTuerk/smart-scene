@@ -10,7 +10,7 @@ namespace Tests
 {
     public class SmartSceneRuntime
     {
-        int testSize = 20000;
+        int testSize = 5000;
 
         [Test]
         public void AddGameObjects () {
@@ -153,6 +153,63 @@ namespace Tests
                 Assert.AreEqual ( 0, testScene.Count );
                 Assert.AreEqual ( 0, testScene.EdgeCount );
                 Assert.AreEqual ( 0, testScene.RelationCount );
+        }
+
+        [Test]
+        public void RemoveChildTest(){
+            SmartScene testScene = new SmartScene();
+
+            for ( int i = 0; i < testSize; i++ ) {
+                testScene.AddNode ( new GameObject ( "" + i) );
+            }
+
+            foreach ( GameObject node in testScene.GetNodes() ) {
+                GameObject other;
+                do {
+                    other = testScene.GetNodes() [ UnityEngine.Random.Range(0, testSize) ];
+                } while ( ! testScene.AddChild( node, other ) );
+            }
+
+            List<GameObject> nodes = testScene.GetNodes();
+            foreach ( GameObject node in nodes ) {
+                Assert.AreEqual ( testScene.GetChildren( node ).Count, 1 );
+                List<GameObject> children = testScene.GetChildren( node );
+                foreach ( GameObject child in children ) {
+                    testScene.RemoveChild ( node, child ); 
+                }
+                Assert.AreEqual ( testScene.GetChildren( node ).Count, 0 );
+            } 
+        }
+
+        [Test]
+        public void RemoveAttributesTest() {
+            SmartScene testScene = new SmartScene();
+
+            for ( int i = 0; i < testSize; i++ ) {
+                testScene.AddNode ( new GameObject ( "" + i) );
+            }
+
+            foreach ( GameObject node in testScene.GetNodes() ) {
+                GameObject other = testScene.GetNodes() [ UnityEngine.Random.Range(0, testSize) ];
+                testScene.AddAttribute( node, other, new BooleanAttribute ( "test1", true ) );
+                other = testScene.GetNodes() [ UnityEngine.Random.Range(0, testSize) ];
+                testScene.AddAttribute( node, other, new BooleanAttribute ( "test2", true ) );
+            }
+
+            UnityEngine.Debug.Log(
+                "Test RemoveAttribute"
+            );
+
+            foreach ( GameObject node in testScene.GetNodes() ) {
+                List<GameObject> neigh = testScene.GetNeighbours ( node );
+
+                Assert.IsTrue( testScene.RemoveAttribute ( node, neigh[0] ,testScene.GetAttributes( node, neigh[0] )[0] ) );
+                Assert.AreEqual( testScene.GetAttributes(node, neigh[0]).Count, 0 );
+
+                testScene.RemoveAttributesByName (node, neigh[1 % neigh.Count], "test1" );
+                testScene.RemoveAttributesByName (node, neigh[1 % neigh.Count], "test2" );
+                Assert.AreEqual( testScene.GetAttributes(node, neigh[1]).Count, 0 );
+            }
         }
 
         [UnityTest]
