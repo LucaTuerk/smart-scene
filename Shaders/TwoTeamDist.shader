@@ -57,7 +57,7 @@
                 }
                 if ( _showMeeting ) {
                     outCol = float4 (0,0,0,0);
-                    if ( abs ( i.color.r * _maxDistance - i.color.b * _maxDistance) < 1.0f ) {
+                    if ( abs ( i.color.r * _maxDistance - i.color.b * _maxDistance) < _showDistance ) {
                         outCol = float4 (1, 0, 1, 1);
                     }
                 }

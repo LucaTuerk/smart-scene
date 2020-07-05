@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
@@ -27,11 +26,11 @@ public class SmartSceneWindow : EditorWindow
     }
 
     void OnEnable() {
-
-        mesh = AssetDatabase.LoadAssetAtPath( "Assets/Editor/SmartScene/GridMesh.asset", typeof( GridMesh ) ) as GridMesh;
+        if ( mesh == null )
+            mesh = AssetDatabase.LoadAssetAtPath( "Assets/Editor/SmartScene/GridMesh.asset", typeof( GridMesh ) ) as GridMesh;
+        // Create Asset Files
         if ( mesh == null ) {
             Debug.Log("SmartScene: Creating GridMesh asset" );
-            mesh = ScriptableObject.CreateInstance<GridMesh>();
 
             if ( !AssetDatabase.IsValidFolder( "Assets/Editor" ) ) {
                 AssetDatabase.CreateFolder("Assets", "Editor");
@@ -42,28 +41,31 @@ public class SmartSceneWindow : EditorWindow
             if ( !AssetDatabase.IsValidFolder( "Assets/Editor/SmartScene/SmartSceneMaterials" ) ) {
                 AssetDatabase.CreateFolder("Assets/Editor/SmartScene", "SmartSceneMaterials"); 
             }
-
+            mesh = ScriptableObject.CreateInstance<GridMesh>();
+            mesh.Init();
             AssetDatabase.CreateAsset(mesh, "Assets/Editor/SmartScene/GridMesh.asset");
+            AssetDatabase.Refresh();
+            EditorUtility.SetDirty(mesh);
+
+            mesh.ClearMaterials();
+            mesh.AddSmartSceneMaterial(
+                new TwoTeamDistanceMaterial()
+            );
+            mesh.SetActiveMaterial(0);
+            ( mesh.ActiveMaterial as TwoTeamDistanceMaterial ).Init("Distance");
         } else {
             mesh.ReloadMesh();
+            EditorUtility.SetDirty(mesh);
         }
-
-        AssetDatabase.Refresh();
-        EditorUtility.SetDirty(mesh);
         num = mesh.VertLayerLimit;
 
         SceneView.onSceneGUIDelegate += this.OnSceneGUI;
         Camera.onPostRender += this.OnPostRender;
-
-        mesh.ClearMaterials();
-        mesh.SetActiveMaterial(
-            mesh.AddSmartSceneMaterial (
-                new TwoTeamDistanceMaterial ( "TwoTeamDistance" )
-            )
-        );
     }
 
     void OnDisable() {
+        mesh?.SaveMaterials();
+
         SceneView.onSceneGUIDelegate -= this.OnSceneGUI;
         Camera.onPostRender -= this.OnPostRender;
     }
@@ -105,6 +107,7 @@ public class SmartSceneWindow : EditorWindow
                     mesh.ActiveMaterial.DrawGUI();
 
                     GUILayout.Space (20);
+                    mesh.ActiveMaterial.AutoBake = GUILayout.Toggle( mesh.ActiveMaterial.AutoBake, "Auto Rebake on GridMesh Bake");
                     if ( GUILayout.Button("Bake Material")) {
                         mesh.ActiveMaterial.Bake( mesh );
                     }
@@ -173,7 +176,7 @@ public class SmartSceneWindow : EditorWindow
 
     void OnPostRender( Camera cam ) {
         SmartSceneMaterial material = mesh?.ActiveMaterial;
-        material?.PreDraw();
+        material?.PreDraw(mesh);
         material?.Draw(mesh, verticalOffset);
     }
 

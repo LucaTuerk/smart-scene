@@ -5,20 +5,29 @@ using UnityEngine;
 using UnityEngine.AI;
 using UnityEditor;
 
+[Serializable]
 public class TwoTeamDistanceMaterial : ColorMaterial
 {
-    public TwoTeamDistanceMaterial ( string name ) : base ( name, "SmartScene/TwoTeamDist" )  {
+    [SerializeField]
+    List<Vector3> redTeam;
+    [SerializeField]
+    List<Vector3> blueTeam;
+    [SerializeField]
+    float maxDist;
+    [SerializeField]
+    float showDist = 0.0f;
+    [SerializeField]
+    bool showRed = true;
+    [SerializeField]
+    bool showBlue = true;
+    [SerializeField]
+    bool showMeetingpoint = false;
+
+    public void Init ( string name ) {
+        base.Init ( name, "SmartScene/TwoTeamDist");
         this.redTeam = new List<Vector3>();
         this.blueTeam = new List<Vector3>();
     }
-
-    List<Vector3> redTeam;
-    List<Vector3> blueTeam;
-    float maxDist;
-    float showDist = 0.0f;
-    bool showRed = true;
-    bool showBlue = true;
-    bool showMeetingpoint = false;
 
     public override void Bake( GridMesh mesh ) {
         this.mesh = mesh;
@@ -67,10 +76,11 @@ public class TwoTeamDistanceMaterial : ColorMaterial
         showDist = 0.001f;
     }
 
-    public override void PreDraw() {
-        base.PreDraw();
+    public override void PreDraw( GridMesh mesh ) {
 
         if( isBaked ) {
+            mesh.Mesh.colors = colors;
+
             material.SetFloat("_maxDistance", maxDist);
             material.SetFloat("_showDistance", showDist);
             material.SetInt("_showRed", showRed ? 1 : 0);

@@ -6,7 +6,9 @@ using UnityEngine;
 [Serializable]
 public class RandomColorMaterial : SimpleColorMaterial
 {
-    public RandomColorMaterial( string name ) : base( name ) {}
+    public new void Init( string name ) {
+        base.Init( name );
+    }
 
     public override void Bake( GridMesh mesh ) {
         colors = new Color[mesh.Size];

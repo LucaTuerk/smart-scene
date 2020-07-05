@@ -7,12 +7,12 @@ using UnityEditor;
 [Serializable]
 public abstract class SmartSceneMaterial
 {
-    [SerializeField] string displayName;
+    [SerializeField] String displayName;
     public string DisplayName {
         get { return displayName; }
     }
 
-    [SerializeField] string shader;
+    [SerializeField] public String shader;
 
     [SerializeField] protected bool isBaked;
     public bool IsBaked {
@@ -30,19 +30,21 @@ public abstract class SmartSceneMaterial
     public Material Material {
         get { return material; }
     }
-
-    public SmartSceneMaterial ( string name, string shader ) {
+    
+    public void Init( string name, string shader ) {
         displayName = name;
         this.shader = shader;
+        this.autoBake = false;
+        this.isBaked = false;
         material = new Material( Shader.Find(shader) );
     }
-    
 
     public void Clear() {
         isBaked = false;
     }
+
+    public abstract void PreDraw( GridMesh mesh );
     public abstract void Bake( GridMesh mesh );
-    public abstract void PreDraw();
     
     public void Draw( GridMesh mesh, float verticalOffset ) {
         if ( isBaked ) {

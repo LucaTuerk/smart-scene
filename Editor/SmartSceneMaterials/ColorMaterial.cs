@@ -1,18 +1,16 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class ColorMaterial : SmartSceneMaterial
+[Serializable]
+public abstract class ColorMaterial : SmartSceneMaterial
 {
-   public ColorMaterial( string name, string shader ) : base( name, shader ) {}
-
     [SerializeField] public Color[] colors;
     protected GridMesh mesh;
-    
-    public override void PreDraw () {
-        if ( IsBaked ) {
-            mesh.Mesh.colors = colors;
-        }
+
+    public new void Init ( string name, string shader ) {
+        base.Init( name, shader );
     }
 
     public override void Bake ( GridMesh mesh ) { 

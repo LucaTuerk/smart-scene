@@ -6,5 +6,13 @@ using UnityEngine;
 [Serializable]
 public class SimpleColorMaterial : ColorMaterial
 {
-    public SimpleColorMaterial( string name ) : base( name, "SmartScene/ColorShader" ) {}
+    public void Init( string name ) {
+        base.Init( name, "SmartScene/ColorShader" );
+    }
+
+    public override void PreDraw( GridMesh mesh) {
+        if( isBaked ) {
+            mesh.Mesh.colors = colors;
+        }
+    }
 }

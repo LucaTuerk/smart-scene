@@ -5,20 +5,8 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.AI;
 using UnityEditor;
-
-[Serializable]
-public class MaterialDump : ScriptableObject {
-    public MaterialDump ()
-    {
-    }
-
-    void OnEnable()
-    {
-        materials = new List<SmartSceneMaterial>();
-    }
-
-    [SerializeField] public List<SmartSceneMaterial> materials;
-}
+using System.Linq;
+using System.Reflection;
 
 [Serializable]
 public class GridMesh : ScriptableObject
@@ -44,6 +32,11 @@ public class GridMesh : ScriptableObject
         get { return gridMesh == null ? 0 : gridMesh.vertexCount; }
     }
 
+    // Materials
+    [SerializeField] public List<SmartSceneMaterial> materials;
+    [SerializeField] List<String> materialsJson;
+    [SerializeField] List<String> materialsType; 
+
     // Scene Params
     [SerializeField] Vector3 dimensions;
     public Vector3 Dimensions {
@@ -56,24 +49,25 @@ public class GridMesh : ScriptableObject
     public float maxY;
     public float minY;
 
-    public GridMesh () {
-        doneBaking = false;
+    public void Init ( ) {
+         doneBaking = false;
+         materials = new List<SmartSceneMaterial>();
     }
 
     void OnEnable()
     {
-        dump = ScriptableObject.CreateInstance(typeof( MaterialDump ) ) as MaterialDump;
-        AssetDatabase.CreateAsset ( dump, "Assets/Editor/SmartScene/SmartSceneMaterials/MaterialDump.asset" );
-        EditorUtility.SetDirty( dump );
     }
 
-    public MaterialDump dump;
+    void OnDisable() {
+        SaveMaterials();    
+    }
+
     [SerializeField] public int activeMaterialIndex;
     public SmartSceneMaterial ActiveMaterial {
         get {
-            if ( dump.materials.Count == 0 || activeMaterialIndex >= dump.materials.Count ) 
+            if ( materials.Count == 0 || activeMaterialIndex >= materials.Count ) 
                 return null; 
-            return dump.materials[activeMaterialIndex]; 
+            return materials[activeMaterialIndex]; 
             }
     }
 
@@ -83,7 +77,7 @@ public class GridMesh : ScriptableObject
         doneBaking = false;
         maxY = float.NegativeInfinity;
         minY = float.PositiveInfinity;
-        foreach ( SmartSceneMaterial mat in dump.materials ) {
+        foreach ( SmartSceneMaterial mat in materials ) {
             mat.Clear();
         }
 
@@ -231,9 +225,12 @@ public class GridMesh : ScriptableObject
         doneBaking = true;
         vertLayerLimit = numberOfNodes;
 
-        // Bake dump.materials
-        foreach( SmartSceneMaterial mat in dump.materials)
-            mat.Bake( this );
+        // Bake materials
+        foreach( SmartSceneMaterial mat in materials) {
+            if (mat.AutoBake) {
+                mat.Bake( this );
+            }
+        }
     }
 
     int GetConnectedVertex( Vector3 pos, Vector3[] neighbors, NavMeshHit hit) {
@@ -324,8 +321,8 @@ public class GridMesh : ScriptableObject
     }
 
     public int AddSmartSceneMaterial ( SmartSceneMaterial material ) {
-        dump.materials.Add(material);
-        return dump.materials.Count - 1;
+        materials.Add(material);
+        return materials.Count - 1;
     }
 
     public void SetActiveMaterial ( int index ) {
@@ -333,7 +330,7 @@ public class GridMesh : ScriptableObject
     }
 
     public void ClearMaterials () {
-        dump.materials.Clear();
+        materials.Clear();
         activeMaterialIndex = -1;
     }
 
@@ -341,23 +338,55 @@ public class GridMesh : ScriptableObject
         gridMesh = new Mesh();
         gridMesh.vertices = vertices;
         gridMesh.triangles = triangles;
-        dump = AssetDatabase.LoadAssetAtPath < MaterialDump > ( "Assets/Editor/SmartScene/SmartSceneMaterials/MaterialDump.asset" ) as MaterialDump;
+        LoadMaterials();
 
-        foreach ( SmartSceneMaterial mat in dump.materials )
+        foreach ( SmartSceneMaterial mat in materials )
             mat.Reload (this);
     }
 
     public void BakeMaterial ( int index ) {
-        dump.materials[ index ].Bake ( this );
+        materials[ index ].Bake ( this );
     }
 
     public void SelectMaterial ( int index ) {
-        if ( index < dump.materials.Count )
+        if ( index < materials.Count )
             this.activeMaterialIndex = index;
     }
 
     public void SaveMesh() {
         vertices = gridMesh.vertices;
         triangles = gridMesh.triangles;
+    }
+
+    public void SaveMaterials() {
+
+        materialsJson = new List<String>();
+        materialsType = new List<String>();
+
+        foreach( SmartSceneMaterial mat in materials ) {
+            materialsJson.Add ( JsonUtility.ToJson( mat ) );
+            materialsType.Add ( mat.GetType().FullName );
+        }
+    }
+
+    public void LoadMaterials() {
+        materials = new List<SmartSceneMaterial>();
+        for ( int i = 0; i < materialsJson.Count && i < materialsType.Count; i++ ) {
+
+            MethodInfo method = typeof(SmartSceneSerializer).GetMethod ( "Deserialize" ).MakeGenericMethod ( Type.GetType( materialsType[i] ) );
+
+            object[] args = 
+                new object[1];
+            
+            args[0] = materialsJson[i];
+
+            AddSmartSceneMaterial (
+                (SmartSceneMaterial) method.Invoke( null, args )
+            );
+        }
+
+        for( int i = 0; i < materials.Count; i++ ) {
+            materials[i].LoadShader();
+        }
     }
  }
