@@ -23,8 +23,7 @@ public class TwoTeamDistanceMaterial : ColorMaterial
     [SerializeField]
     bool showMeetingpoint = false;
 
-    public void Init ( string name ) {
-        base.Init ( name, "SmartScene/TwoTeamDist");
+    public TwoTeamDistanceMaterial ( String name ) : base ( name, "SmartScene/TwoTeamDist") {
         this.redTeam = new List<Vector3>();
         this.blueTeam = new List<Vector3>();
     }
@@ -72,8 +71,14 @@ public class TwoTeamDistanceMaterial : ColorMaterial
             );
         }
 
+        mesh.AddPerVertexFloatAttribute( redDistanceAttribute, redDist );
+        mesh.AddPerVertexFloatAttribute( blueDistanceAttribute, blueDist );
+        mesh.AddOffGridVertexGroup( blueSpawns, blueTeam.ToArray() );
+        mesh.AddOffGridVertexGroup( redSpawns, redTeam.ToArray() );
+
         isBaked = true;
-        showDist = 0.001f;
+        if ( showDist > maxDist || showDist == 0.0f ) 
+            showDist = 0.001f;
     }
 
     public override void PreDraw( GridMesh mesh ) {
@@ -157,5 +162,25 @@ public class TwoTeamDistanceMaterial : ColorMaterial
                 blueTeam.Clear();
             }
         }
+    }
+
+    String blueDistanceAttribute = "blueTeamDistanceFromSpawn";
+    String redDistanceAttribute = "redTeamDistanceFromSpawn";
+    String blueSpawns = "blueSpawnPositions";
+    String redSpawns = "redSpawnPositions";
+    String maxDistanceAttribute = "maxDistance";
+
+    public String[] WritesVertexAttributes() {
+        return new String[] {
+            blueDistanceAttribute,
+            redDistanceAttribute
+        };
+    }
+    public String[] WritesLevelAttributes() {
+        return new String[] {
+            maxDistanceAttribute,
+            blueSpawns,
+            redSpawns
+        };
     }
 }

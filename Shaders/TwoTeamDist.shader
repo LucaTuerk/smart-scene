@@ -62,6 +62,17 @@
                     }
                 }
 
+                outCol = float4(0,0,0,0);
+                float red = i.color.r * _maxDistance;
+                float blue = i.color.b * _maxDistance;
+
+                if ( red < blue && red < _showDistance ) {
+                    outCol += float4(1,0,0,0.5);
+                }
+                if ( blue < red && blue < _showDistance ) {
+                    outCol += float4(0,0,1,0.5);
+                }
+
                 return outCol;
             }
             ENDCG

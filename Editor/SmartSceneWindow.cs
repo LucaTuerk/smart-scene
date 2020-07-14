@@ -13,14 +13,22 @@ public class SmartSceneWindow : EditorWindow
     int tab = 0;
     bool debug;
     bool optimizeMesh = true;
+    bool toolMode  = false;
     Material mat;
     float verticalOffset = 0.1f;
 
-    [MenuItem("Window/Smart Scene/Settings")]
+    public static SmartSceneTools tools;
+
+    [MenuItem("Window/Smart Scene/Smart Scene")]
     static void Init()
     {
         SmartSceneWindow window = (SmartSceneWindow)EditorWindow.GetWindow(typeof(SmartSceneWindow));
         window.name = "Smart Scene Settings";
+
+        Texture icon = (Texture) AssetDatabase.LoadAssetAtPath<Texture>("Packages/com.tuerk.smartscene/Assets/Images/icon.png");
+
+        window.titleContent.text = " Smart Scene";
+        window.titleContent.image = icon;
 
         window.Show();
     }
@@ -49,15 +57,23 @@ public class SmartSceneWindow : EditorWindow
 
             mesh.ClearMaterials();
             mesh.AddSmartSceneMaterial(
-                new TwoTeamDistanceMaterial()
+                new TwoTeamDistanceMaterial("Distance")
+            );
+            mesh.AddSmartSceneMaterial(
+                new SingleViewPointVisibilityMaterial("Single Point Visibility")
+            );
+            mesh.AddSmartSceneMaterial(
+                new RandomColorMaterial("Random")
             );
             mesh.SetActiveMaterial(0);
-            ( mesh.ActiveMaterial as TwoTeamDistanceMaterial ).Init("Distance");
+
         } else {
             mesh.ReloadMesh();
             EditorUtility.SetDirty(mesh);
         }
         num = mesh.VertLayerLimit;
+
+        tools = new SmartSceneTools();
 
         SceneView.onSceneGUIDelegate += this.OnSceneGUI;
         Camera.onPostRender += this.OnPostRender;
@@ -90,18 +106,17 @@ public class SmartSceneWindow : EditorWindow
         rightAlignField.alignment = TextAnchor.MiddleRight;
     
 
-        tab = GUILayout.Toolbar (tab, new String[] {"Material", "GridMesh", "Areas", "Events"});
+        tab = GUILayout.Toolbar (tab, new String[] {"Material", "GridMesh", "Tools", "Events"});
         switch (tab)
         {
             case 0:
-                // selected = Selection.activeTransform;
-                // if ( selected != null ) {
-                //     GUILayout.Label("Selected Object: \n" + selected.name );
-                // }
-                // else {
-                //     GUILayout.Label("Select an object to edit attributes");
-                // }
+                toolMode = false;
                 GUILayout.Label("Material Settings", title );
+
+                mesh.SetActiveMaterial(
+                    EditorGUILayout.Popup ( mesh.ActiveMaterialIndex, mesh.Names ) 
+                ); 
+
                 if ( mesh.ActiveMaterial != null ) {
                     GUILayout.Label ( mesh.ActiveMaterial.DisplayName, subTitle );
                     mesh.ActiveMaterial.DrawGUI();
@@ -115,6 +130,7 @@ public class SmartSceneWindow : EditorWindow
 
                 break;
             case 1:
+                toolMode = false;
                 GUILayout.Label("Grid Mesh Settings", title);
                 GUILayout.Label("Current Mesh:", subTitle);
                 GUILayout.Label( mesh.DoneBaking ? "Baking finished" : "Baking outstanding", rightAlign );
@@ -143,6 +159,13 @@ public class SmartSceneWindow : EditorWindow
                 GUILayout.Label("Size per float data set:\t" + SmartSceneUtilities.DataSizeInMiB(num) + " MiB");
                 GUILayout.Space(10);
                 optimizeMesh = GUILayout.Toggle( optimizeMesh, "Optimize Mesh for Rendering");
+
+                GUILayout.Label("Vertex Attributes:");
+                foreach( String attr in mesh.floatVertexAttributes.Keys )
+                    GUILayout.Label("\t" + attr);
+                 foreach( String attr in mesh.stringVertexAttributes.Keys )
+                    GUILayout.Label("\t" + attr);
+
                 GUILayout.Space(10);
                 if ( GUILayout.Button( "Bake Grid Mesh")) {
                     mesh.Bake(num, optimizeMesh);
@@ -157,8 +180,11 @@ public class SmartSceneWindow : EditorWindow
                 }
                 break;
             case 2:
+                toolMode = true;
+                tools.OnGUI();
                 break;
             case 3:
+                toolMode = false;
                 break;
             default:
                 break;
@@ -166,6 +192,12 @@ public class SmartSceneWindow : EditorWindow
     }
 
     void OnSceneGUI( SceneView sceneView ) {
+        SmartSceneMaterial material = mesh?.ActiveMaterial;
+        material?.PreDraw(mesh);
+        material?.Draw(mesh, verticalOffset);
+
+        if(toolMode) tools.OnSceneGUI(sceneView);
+
         Handles.BeginGUI();
         Handles.EndGUI();
     }
@@ -175,9 +207,7 @@ public class SmartSceneWindow : EditorWindow
     }
 
     void OnPostRender( Camera cam ) {
-        SmartSceneMaterial material = mesh?.ActiveMaterial;
-        material?.PreDraw(mesh);
-        material?.Draw(mesh, verticalOffset);
+        
     }
 
     void Update() {

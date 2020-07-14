@@ -36,6 +36,26 @@ public class GridMesh : ScriptableObject
     [SerializeField] public List<SmartSceneMaterial> materials;
     [SerializeField] List<String> materialsJson;
     [SerializeField] List<String> materialsType; 
+    [SerializeField] List<String> materialNames;
+
+    // Attributes
+    // Per Vertex Attributes
+    [SerializeField] public SerializableDictionary< String, float[] > floatVertexAttributes;
+    [SerializeField] public SerializableDictionary< String, String[] > stringVertexAttributes;
+
+    // Vertex Groups
+    [SerializeField] public SerializableDictionary< String, int[] > gridVertexGroups;
+    [SerializeField] public SerializableDictionary< String, Vector3[] > offGridVertexGroups;
+
+    // Level Attributes
+    [SerializeField] public SerializableDictionary< String, float > floatLevelAttributes;
+    [SerializeField] public SerializableDictionary< String, String > stringGridVertexGroups;
+
+    public String[] Names {
+        get {
+            return materialNames.ToArray();
+        }
+    }
 
     // Scene Params
     [SerializeField] Vector3 dimensions;
@@ -52,6 +72,11 @@ public class GridMesh : ScriptableObject
     public void Init ( ) {
          doneBaking = false;
          materials = new List<SmartSceneMaterial>();
+         materialNames = new List<String>();
+         floatVertexAttributes = new SerializableDictionary<string, float[]>();
+         stringVertexAttributes = new SerializableDictionary<string, string[]>();
+         gridVertexGroups = new SerializableDictionary<string, int[]>();
+         offGridVertexGroups = new SerializableDictionary<string, Vector3[]>();
     }
 
     void OnEnable()
@@ -69,6 +94,11 @@ public class GridMesh : ScriptableObject
                 return null; 
             return materials[activeMaterialIndex]; 
             }
+    }
+    public int ActiveMaterialIndex {
+        get {
+            return activeMaterialIndex;
+        }
     }
 
     // Bake a new GridMesh
@@ -110,6 +140,7 @@ public class GridMesh : ScriptableObject
         xNum = (int) Mathf.Sqrt( ( dimensions.z / dimensions.x ) * numberOfNodes );
         zNum = (int) ( (float) xNum * ( dimensions.z / dimensions.x ) );
         gridDimensions = new Vector3Int(xNum, 0, zNum);
+        float stepSize = dimensions.x / gridDimensions.x;
         // Get approximate vertices along vertical rays from Triangulation
         Vector3[,][] positions = new Vector3[xNum, zNum][];
         float startX =  - ( dimensions.x / 2 );
@@ -132,9 +163,11 @@ public class GridMesh : ScriptableObject
                 
                 // Get Vertices shrunkwrapped onto the NavMesh
                 for ( int w = 0; w < positions[i,j].Length; w++ ) {
-                    if ( NavMesh.SamplePosition ( positions[i,j][w], out hit, 10.0f, NavMesh.AllAreas ) ) {
-                        positions[i,j][w] = hit.position;
+                    Vector3 currPos = positions[i,j][w];
+                    if ( NavMesh.SamplePosition ( currPos, out hit, 10 * stepSize , NavMesh.AllAreas ) ) {
+                        currPos = hit.position;
                     }
+                    positions[i,j][w] = currPos;
                 }
             }
         }
@@ -146,6 +179,7 @@ public class GridMesh : ScriptableObject
             for ( int j = 0; j < zNum - 1; j++ ) {
                 Vector3 pos;
                 int left, right, up, down;
+                int count = 0;
                 
                 // Check this trig:
                     //  up 
@@ -160,6 +194,7 @@ public class GridMesh : ScriptableObject
                     if ( up != -1 && right != -1) {
                         // Add Triangle
                         if ( IsConnected (positions[i,j+1][up], positions[i+1,j][right], hit ) ) {
+                            count++;
                             indicesVert.Add( new Vector3Int(i,w,j) ); 
                             indicesVert.Add( new Vector3Int(i,up,j+1)); 
                             indicesVert.Add( new Vector3Int(i+1,right,j));
@@ -180,12 +215,51 @@ public class GridMesh : ScriptableObject
                         if ( left != -1 && down != -1 ) {
                             // Add Triangle
                             if ( IsConnected (positions[i,j+1][left], positions[i+1,j][down], hit ) ) {
+                                count++;
                                 indicesVert.Add( new Vector3Int(i+1,w,j+1) ); 
                                 indicesVert.Add( new Vector3Int(i+1,down,j) ); 
                                 indicesVert.Add( new Vector3Int(i,left,j+1) );
                             }
                         }
                     }
+
+                // if neither trig is possible try the other diagonal
+                //              up                   up  --- right
+                //              |                     |
+                //              |                     |   
+                // [i,j] --- right      AND         [i,j]
+                if ( count == 0 ) {
+                    for( int w = 0; w < positions[i,j].Length; w++ ) {
+                        pos = positions[i,j][w];
+                        up = GetConnectedVertex ( pos, positions[i+1,j+1], hit );
+                        right = GetConnectedVertex ( pos, positions[i+1,j], hit );
+
+                        if ( up != -1 && right != -1 ) {
+                            if ( IsConnected(positions[i+1,j+1][up], positions[i+1,j][right], hit ) ) {
+                                count++;
+                                indicesVert.Add( new Vector3Int(i,w,j) ); 
+                                indicesVert.Add( new Vector3Int(i+1,up,j+1)); 
+                                indicesVert.Add( new Vector3Int(i+1,right,j));
+                            }
+                        }
+                    }
+
+                    if ( count == 0 ) {
+                    for( int w = 0; w < positions[i,j].Length; w++ ) {
+                        pos = positions[i,j][w];
+                        up = GetConnectedVertex ( pos, positions[i+1,j+1], hit );
+                        right = GetConnectedVertex ( pos, positions[i+1,j], hit );
+
+                        if ( up != -1 && right != -1 ) {
+                            if ( IsConnected(positions[i+1,j+1][up], positions[i+1,j][right], hit ) ) {
+                                indicesVert.Add( new Vector3Int(i,w,j) ); 
+                                indicesVert.Add( new Vector3Int(i+1,up,j+1)); 
+                                indicesVert.Add( new Vector3Int(i+1,right,j));
+                            }
+                        }
+                    }
+                }
+                }
             }
         }
 
@@ -322,6 +396,8 @@ public class GridMesh : ScriptableObject
 
     public int AddSmartSceneMaterial ( SmartSceneMaterial material ) {
         materials.Add(material);
+        materialNames.Add(material.DisplayName);
+        int index = materials.Count - 1;
         return materials.Count - 1;
     }
 
@@ -334,6 +410,11 @@ public class GridMesh : ScriptableObject
         activeMaterialIndex = -1;
     }
 
+    public void RenameActive (String name) {
+        materials[activeMaterialIndex].Rename(name);
+        materialNames[activeMaterialIndex] = name;
+    }
+
     public void ReloadMesh() {
         gridMesh = new Mesh();
         gridMesh.vertices = vertices;
@@ -342,6 +423,12 @@ public class GridMesh : ScriptableObject
 
         foreach ( SmartSceneMaterial mat in materials )
             mat.Reload (this);
+
+        if ( materialNames == null ) materialNames = new List<String>();
+        if ( floatVertexAttributes == null ) floatVertexAttributes = new SerializableDictionary<string, float[]>();
+        if ( stringVertexAttributes == null ) stringVertexAttributes = new SerializableDictionary<string, string[]>();
+        if ( gridVertexGroups == null ) gridVertexGroups = new SerializableDictionary<string, int[]>();
+        if ( offGridVertexGroups == null ) offGridVertexGroups = new SerializableDictionary<string, Vector3[]>();
     }
 
     public void BakeMaterial ( int index ) {
@@ -388,5 +475,31 @@ public class GridMesh : ScriptableObject
         for( int i = 0; i < materials.Count; i++ ) {
             materials[i].LoadShader();
         }
+    }
+
+    public bool AddPerVertexFloatAttribute ( String key, float[] values ) {
+        if ( gridMesh != null && values.Length == gridMesh.vertexCount ) {
+            floatVertexAttributes[key] = values;
+            return true;
+        }
+        return false;
+    }
+
+    public bool AddPerVertexStringAttribute ( String key, String[] values ) {
+        if ( gridMesh != null && values.Length == gridMesh.vertexCount ) {
+            stringVertexAttributes[key] = values;
+            return true;
+        }
+        return false;
+    }
+
+    public bool AddOnGridVertexGroup ( String key, int[] vertices ) {
+        gridVertexGroups[key] = vertices;
+        return true;
+    }
+
+    public bool AddOffGridVertexGroup ( String key, Vector3[] vertices ) {
+        offGridVertexGroups[key] = vertices;
+        return true;
     }
  }

@@ -9,9 +9,7 @@ public abstract class ColorMaterial : SmartSceneMaterial
     [SerializeField] public Color[] colors;
     protected GridMesh mesh;
 
-    public new void Init ( string name, string shader ) {
-        base.Init( name, shader );
-    }
+    public ColorMaterial ( string name, string shader ) : base ( name, shader ) {} 
 
     public override void Bake ( GridMesh mesh ) { 
         this.mesh = mesh;

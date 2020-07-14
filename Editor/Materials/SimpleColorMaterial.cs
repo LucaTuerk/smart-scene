@@ -6,9 +6,7 @@ using UnityEngine;
 [Serializable]
 public class SimpleColorMaterial : ColorMaterial
 {
-    public void Init( string name ) {
-        base.Init( name, "SmartScene/ColorShader" );
-    }
+    public SimpleColorMaterial ( String name ) : base ( name, "SmartScene/ColorShader" ) {}
 
     public override void PreDraw( GridMesh mesh) {
         if( isBaked ) {

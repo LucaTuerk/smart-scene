@@ -30,8 +30,8 @@ public abstract class SmartSceneMaterial
     public Material Material {
         get { return material; }
     }
-    
-    public void Init( string name, string shader ) {
+
+    public SmartSceneMaterial( string name, string shader ) {
         displayName = name;
         this.shader = shader;
         this.autoBake = false;
@@ -63,5 +63,14 @@ public abstract class SmartSceneMaterial
         material = new Material( Shader.Find(shader) );
     }
 
+    public void Rename ( String name ) {
+        displayName = name;
+    }
+
     public abstract void DrawGUI();
+
+    public String[] ProvidesVertexAttributes()      { return new String[0]; }
+    public String[] WritesLevelAttributes()         { return new String[0]; }
+    public String[] ProvidesGridVertexGroups()      { return new String[0]; }
+    public String[] ProvidesOffGridVertexGroups()   { return new String[0]; }
 } 
