@@ -18,8 +18,9 @@ public class SmartSceneWindow : EditorWindow
     float verticalOffset = 0.1f;
 
     public static SmartSceneTools tools;
+    public static SmartSceneDB db;
 
-    [MenuItem("Window/Smart Scene/Smart Scene")]
+    [MenuItem("Tools/SmartScene/Settings")]
     static void Init()
     {
         SmartSceneWindow window = (SmartSceneWindow)EditorWindow.GetWindow(typeof(SmartSceneWindow));
@@ -63,7 +64,13 @@ public class SmartSceneWindow : EditorWindow
                 new SingleViewPointVisibilityMaterial("Single Point Visibility")
             );
             mesh.AddSmartSceneMaterial(
+                new AreaToAreaVisibilityMaterial("Area To Area Visibility")
+            );
+            mesh.AddSmartSceneMaterial(
                 new RandomColorMaterial("Random")
+            );
+            mesh.AddSmartSceneMaterial(
+                new VertexGroupMaterial("Vertex Group Material")
             );
             mesh.SetActiveMaterial(0);
 
@@ -74,6 +81,8 @@ public class SmartSceneWindow : EditorWindow
         num = mesh.VertLayerLimit;
 
         tools = new SmartSceneTools();
+        db = new SmartSceneDB();
+        db.SetGridMesh(mesh);
 
         SceneView.onSceneGUIDelegate += this.OnSceneGUI;
         Camera.onPostRender += this.OnPostRender;
@@ -161,13 +170,14 @@ public class SmartSceneWindow : EditorWindow
                 optimizeMesh = GUILayout.Toggle( optimizeMesh, "Optimize Mesh for Rendering");
 
                 GUILayout.Label("Vertex Attributes:");
-                foreach( String attr in mesh.floatVertexAttributes.Keys )
+                foreach( String attr in db.floatVertexAttributes.Keys )
                     GUILayout.Label("\t" + attr);
-                 foreach( String attr in mesh.stringVertexAttributes.Keys )
+                 foreach( String attr in db.stringVertexAttributes.Keys )
                     GUILayout.Label("\t" + attr);
 
                 GUILayout.Space(10);
                 if ( GUILayout.Button( "Bake Grid Mesh")) {
+                    db.ResetAreaVertexGroups();
                     mesh.Bake(num, optimizeMesh);
                 }
 
@@ -211,6 +221,7 @@ public class SmartSceneWindow : EditorWindow
     }
 
     void Update() {
+        mesh?.Update();
         Repaint();
     }
 }

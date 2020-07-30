@@ -90,7 +90,8 @@ public class SingleViewPointVisibilityMaterial : ColorMaterial
         if ( GUILayout.Button("Add as viewpoint") && selected != null ) {
             viewPoint = selected.position;
         }
-        SmartSceneWindow.tools.SupplyPosition( "Use marked position" );
+        
+        viewPoint = SmartSceneWindow.tools.SupplyPosition( "Use marked position", viewPoint );
 
         onlyFullToFull = GUILayout.Toggle( onlyFullToFull, "Only Render Full to Full Height Visibility");
 

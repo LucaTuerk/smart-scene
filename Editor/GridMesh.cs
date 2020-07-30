@@ -32,24 +32,20 @@ public class GridMesh : ScriptableObject
         get { return gridMesh == null ? 0 : gridMesh.vertexCount; }
     }
 
+    public int[] WHOLE_MESH {
+        get {
+            int[] result = new int[Size];
+            for(int i = 0; i < result.Length; i++ )
+                result[i] = i;
+            return result;
+        }
+    }
+
     // Materials
     [SerializeField] public List<SmartSceneMaterial> materials;
     [SerializeField] List<String> materialsJson;
     [SerializeField] List<String> materialsType; 
     [SerializeField] List<String> materialNames;
-
-    // Attributes
-    // Per Vertex Attributes
-    [SerializeField] public SerializableDictionary< String, float[] > floatVertexAttributes;
-    [SerializeField] public SerializableDictionary< String, String[] > stringVertexAttributes;
-
-    // Vertex Groups
-    [SerializeField] public SerializableDictionary< String, int[] > gridVertexGroups;
-    [SerializeField] public SerializableDictionary< String, Vector3[] > offGridVertexGroups;
-
-    // Level Attributes
-    [SerializeField] public SerializableDictionary< String, float > floatLevelAttributes;
-    [SerializeField] public SerializableDictionary< String, String > stringGridVertexGroups;
 
     public String[] Names {
         get {
@@ -73,10 +69,7 @@ public class GridMesh : ScriptableObject
          doneBaking = false;
          materials = new List<SmartSceneMaterial>();
          materialNames = new List<String>();
-         floatVertexAttributes = new SerializableDictionary<string, float[]>();
-         stringVertexAttributes = new SerializableDictionary<string, string[]>();
-         gridVertexGroups = new SerializableDictionary<string, int[]>();
-         offGridVertexGroups = new SerializableDictionary<string, Vector3[]>();
+         vertLayerLimit = 40000;
     }
 
     void OnEnable()
@@ -423,12 +416,6 @@ public class GridMesh : ScriptableObject
 
         foreach ( SmartSceneMaterial mat in materials )
             mat.Reload (this);
-
-        if ( materialNames == null ) materialNames = new List<String>();
-        if ( floatVertexAttributes == null ) floatVertexAttributes = new SerializableDictionary<string, float[]>();
-        if ( stringVertexAttributes == null ) stringVertexAttributes = new SerializableDictionary<string, string[]>();
-        if ( gridVertexGroups == null ) gridVertexGroups = new SerializableDictionary<string, int[]>();
-        if ( offGridVertexGroups == null ) offGridVertexGroups = new SerializableDictionary<string, Vector3[]>();
     }
 
     public void BakeMaterial ( int index ) {
@@ -477,29 +464,9 @@ public class GridMesh : ScriptableObject
         }
     }
 
-    public bool AddPerVertexFloatAttribute ( String key, float[] values ) {
-        if ( gridMesh != null && values.Length == gridMesh.vertexCount ) {
-            floatVertexAttributes[key] = values;
-            return true;
+    public void Update() {
+        foreach( SmartSceneMaterial material in materials ) {
+            material.Update();
         }
-        return false;
-    }
-
-    public bool AddPerVertexStringAttribute ( String key, String[] values ) {
-        if ( gridMesh != null && values.Length == gridMesh.vertexCount ) {
-            stringVertexAttributes[key] = values;
-            return true;
-        }
-        return false;
-    }
-
-    public bool AddOnGridVertexGroup ( String key, int[] vertices ) {
-        gridVertexGroups[key] = vertices;
-        return true;
-    }
-
-    public bool AddOffGridVertexGroup ( String key, Vector3[] vertices ) {
-        offGridVertexGroups[key] = vertices;
-        return true;
     }
  }

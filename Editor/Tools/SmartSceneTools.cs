@@ -32,11 +32,19 @@ public class SmartSceneTools
 
     bool meterstabMode = false;
     Meterstab meterstab;
-    Area testArea;
 
-    public SmartSceneTools () {
+    int selectedArea;
+    public Area SelectedArea {
+        get {
+            if ( selectedArea >= SmartSceneWindow.db.areas.Count )
+            return null;
+            return SmartSceneWindow.db.areas[selectedArea];
+        }
+    }
+
+    public SmartSceneTools ( ) {
         meterstab = new Meterstab();
-        testArea = new Area();
+        selectedArea = 0;
 
         selectorMesh = (Mesh) AssetDatabase.LoadAssetAtPath<Mesh>("Packages/com.tuerk.smartscene/Assets/Models/selector.fbx");
         selectorMaterial = (Material) AssetDatabase.LoadAssetAtPath<Material>("Packages/com.tuerk.smartscene/Assets/Models/selector.fbx");
@@ -64,7 +72,10 @@ public class SmartSceneTools
             case 2:
                 break;
             case 3:
-                testArea.OnGUI();
+                selectedArea = SmartSceneWindow.db.AreaSelectGUI( selectedArea, true );
+                SelectedArea?.OnGUI( false );
+                int add = SmartSceneWindow.db.AreaAddGUI();
+                if ( add != -1 ) selectedArea = add;
                 break;
             default:
                 break;
@@ -105,7 +116,7 @@ public class SmartSceneTools
                     meterstab.Set( current );
                 }
                 if ( areaMode ) {
-                    testArea.AddVertex( current );
+                    SelectedArea?.AddVertex( current );
                 }
             }
             if ( (e.type == EventType.MouseDown) &&  e.button == 1) 
@@ -126,7 +137,8 @@ public class SmartSceneTools
             dist = meterstab.Draw( markingMesh, markingMaterial, current );
         }
         if ( areaMode ) {
-            testArea.Draw ( markingMesh, markingMaterial );
+            foreach ( Area area in SmartSceneWindow.db.areas )
+                area.Draw ( markingMesh, markingMaterial );
         }
 
         SceneView.lastActiveSceneView.Repaint();
@@ -136,12 +148,15 @@ public class SmartSceneTools
         Handles.EndGUI();
     }
 
-    public void SupplyPosition( String msg, out Vector3 pos ) {
+    public Vector3 SupplyPosition( String msg, Vector3 curr ) {
         if ( marked && primaryMarking != null ) {
             flagMaterial.SetPass(0);
             Graphics.DrawMeshNow( flagMesh, primaryMarking.pos, primaryMarking.rot );
 
-            if ( GUILayout.Button( msg ) ) pos = primaryMarking.pos;
+            if ( GUILayout.Button( msg ) ) {
+                return primaryMarking.pos;
+            }
         }
+        return curr;
     } 
 }

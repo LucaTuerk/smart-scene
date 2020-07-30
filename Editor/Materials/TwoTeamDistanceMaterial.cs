@@ -71,10 +71,10 @@ public class TwoTeamDistanceMaterial : ColorMaterial
             );
         }
 
-        mesh.AddPerVertexFloatAttribute( redDistanceAttribute, redDist );
-        mesh.AddPerVertexFloatAttribute( blueDistanceAttribute, blueDist );
-        mesh.AddOffGridVertexGroup( blueSpawns, blueTeam.ToArray() );
-        mesh.AddOffGridVertexGroup( redSpawns, redTeam.ToArray() );
+        // mesh.AddPerVertexFloatAttribute( redDistanceAttribute, redDist );
+        // mesh.AddPerVertexFloatAttribute( blueDistanceAttribute, blueDist );
+        // mesh.AddOffGridVertexGroup( blueSpawns, blueTeam.ToArray() );
+        // mesh.AddOffGridVertexGroup( redSpawns, redTeam.ToArray() );
 
         isBaked = true;
         if ( showDist > maxDist || showDist == 0.0f ) 

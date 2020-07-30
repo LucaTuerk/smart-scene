@@ -31,6 +31,11 @@ public abstract class SmartSceneMaterial
         get { return material; }
     }
 
+    protected float progress;
+    public float Progress {
+        get {return progress; }
+    }
+
     public SmartSceneMaterial( string name, string shader ) {
         displayName = name;
         this.shader = shader;
@@ -55,6 +60,10 @@ public abstract class SmartSceneMaterial
 
     public void Draw( GridMesh mesh  ) {
         Draw( mesh, 0.125f);
+    }
+
+    public virtual void Update() {
+
     }
 
     public abstract void Reload( GridMesh mesh );
