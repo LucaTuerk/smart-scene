@@ -28,7 +28,9 @@ public class SmartSceneTools
     }
 
     int tab = 0;
+    int tabInner = 0;
     float dist = 0.0f;
+    float playerSpeed = 5.0f;
 
     bool meterstabMode = false;
     Meterstab meterstab;
@@ -41,6 +43,10 @@ public class SmartSceneTools
             return SmartSceneWindow.db.areas[selectedArea];
         }
     }
+
+    String selectedGroup = "";
+    bool isCreating = false;
+    bool groupMarking;
 
     public SmartSceneTools ( ) {
         meterstab = new Meterstab();
@@ -62,12 +68,28 @@ public class SmartSceneTools
         switch (tab)
         {
             case 0:
-                if ( primaryMarking != null ) {
-                    GUILayout.Label ( "Marked Position: " + primaryMarking.pos );
+                tabInner = GUILayout.Toolbar ( tabInner, new String[] {"Primary Marking", "Marking Groups"} );
+                if ( tabInner == 0 )
+                {
+                    if ( primaryMarking != null ) {
+                        GUILayout.Label ( "Marked Position: " + primaryMarking.pos );
+                    }
+                    groupMarking = false;
+                }
+                if ( tabInner != 0 ) {
+                    selectedGroup = SmartSceneWindow.db.OffGridGroupGUI ( selectedGroup, ref isCreating );
+                    groupMarking = true;
                 }
                 break;
             case 1:
+                GUILayout.Label("Player Speed (in Units per Second):");
+                string speed = GUILayout.TextField( "" + playerSpeed );
+                float parsedSpeed;
+                if (float.TryParse(speed, out parsedSpeed) ) {
+                playerSpeed = parsedSpeed;
+            }
                 GUILayout.Label("Distance: " + dist);
+                GUILayout.Label("Time: " + (dist / playerSpeed ) + " seconds");
                 break;
             case 2:
                 break;
@@ -107,7 +129,13 @@ public class SmartSceneTools
             if (markingMode && (e.type == EventType.MouseDrag || e.type == EventType.MouseDown) &&  e.button == 0)
             {
                 marked = true;
-                primaryMarking = current;
+                if ( groupMarking ){
+                    if ( SmartSceneWindow.db.offGridVertexGroups.ContainsKey( selectedGroup ) )
+                        SmartSceneWindow.db.AddPosition ( selectedGroup, current.pos );
+                } else { 
+                    primaryMarking = current;
+                }
+
                 e.Use(); 
             }
             if ((e.type == EventType.MouseDown) &&  e.button == 0)
@@ -127,10 +155,17 @@ public class SmartSceneTools
             }
         }
 
-        if ( markingMode && marked && primaryMarking != null ) {
+        if ( markingMode && marked  ) {
             flagMaterial.SetPass(0);
-            Graphics.DrawMeshNow( flagMesh, primaryMarking.pos, primaryMarking.rot );
-        }
+            if ( primaryMarking != null && !groupMarking)
+                Graphics.DrawMeshNow( flagMesh, primaryMarking.pos, primaryMarking.rot );
+
+            if ( groupMarking && SmartSceneWindow.db.offGridVertexGroups.ContainsKey( selectedGroup ) ) {
+                foreach ( Vector3 pos in SmartSceneWindow.db.offGridVertexGroups[selectedGroup] ) {
+                    Graphics.DrawMeshNow ( flagMesh, pos, Quaternion.identity );
+                }
+            }
+        } 
 
         dist = 0.0f;
         if ( meterstabMode ) {
@@ -144,7 +179,9 @@ public class SmartSceneTools
         SceneView.lastActiveSceneView.Repaint();
 
         Handles.BeginGUI();
-        if( meterstabMode ) GUILayout.Label("" + dist);
+        if( meterstabMode ) {
+            GUILayout.Label("" + dist);
+        }
         Handles.EndGUI();
     }
 

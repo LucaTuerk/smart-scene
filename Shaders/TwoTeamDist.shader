@@ -23,6 +23,7 @@
             bool _showRed;
             bool _showBlue;
             bool _showMeeting;
+            bool _Overlap;
 
             struct appdata
             {
@@ -48,32 +49,27 @@
 
             fixed4 frag (v2f i) : SV_Target
             {
+                float red = i.color.r * _maxDistance;
+                float blue = i.color.b * _maxDistance; 
+
                 float4 outCol = float4(0,0,0,0);
-                if ( i.color.r * _maxDistance < _showDistance && _showRed) {
+                if ( red < _showDistance && _showRed &&  i.color.r != 0.0f && ( _Overlap || red < blue ) ) {
                     outCol += float4(1,0,0,0.5);
                 }
-                if ( i.color.b * _maxDistance < _showDistance && _showBlue) {
+                if ( blue < _showDistance && _showBlue && i.color.b != 0.0f && ( _Overlap || blue < red ) ) {
                     outCol += float4(0,0,1,0.5);
                 }
                 if ( _showMeeting ) {
                     outCol = float4 (0,0,0,0);
-                    if ( abs ( i.color.r * _maxDistance - i.color.b * _maxDistance) < _showDistance ) {
-                        outCol = float4 (1, 0, 1, 1);
+                    if ( 
+                        (red - blue) < _showDistance &&
+                        (blue - red) < _showDistance && 
+                        red != 0.0f && blue != 0.0f
+                    ) {
+                        outCol = float4 (0, 1, 0, 0.5);
                     }
                 }
-
-                outCol = float4(0,0,0,0);
-                float red = i.color.r * _maxDistance;
-                float blue = i.color.b * _maxDistance;
-
-                if ( red < blue && red < _showDistance ) {
-                    outCol += float4(1,0,0,0.5);
-                }
-                if ( blue < red && blue < _showDistance ) {
-                    outCol += float4(0,0,1,0.5);
-                }
-
-                return outCol;
+                return i.color.a < 0.5f ? float4(1,1,1,1) : float4(outCol.rgb, min( outCol.a, 0.5f) );
             }
             ENDCG
         }

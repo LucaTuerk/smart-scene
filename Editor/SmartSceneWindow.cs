@@ -72,6 +72,15 @@ public class SmartSceneWindow : EditorWindow
             mesh.AddSmartSceneMaterial(
                 new VertexGroupMaterial("Vertex Group Material")
             );
+            mesh.AddSmartSceneMaterial(
+                new LogicOpsVertexGroupMaterial("Logic Ops Vertex Group Material")
+            );
+            mesh.AddSmartSceneMaterial(
+                new FloatMinMaxToGroupMaterial("Float Min Max Material")
+            );
+            mesh.AddSmartSceneMaterial(
+                new ErrorMaterial("Error Material")
+            );
             mesh.SetActiveMaterial(0);
 
         } else {
@@ -115,7 +124,7 @@ public class SmartSceneWindow : EditorWindow
         rightAlignField.alignment = TextAnchor.MiddleRight;
     
 
-        tab = GUILayout.Toolbar (tab, new String[] {"Material", "GridMesh", "Tools", "Events"});
+        tab = GUILayout.Toolbar (tab, new String[] {"Material", "GridMesh", "Tools", "Database"});
         switch (tab)
         {
             case 0:
@@ -130,11 +139,15 @@ public class SmartSceneWindow : EditorWindow
                     GUILayout.Label ( mesh.ActiveMaterial.DisplayName, subTitle );
                     mesh.ActiveMaterial.DrawGUI();
 
+                    printWrites( "Vertex Attributes: ", mesh.ActiveMaterial.ProvidesVertexAttributes() );
+                    printWrites( "Level Attributes: ", mesh.ActiveMaterial.WritesLevelAttributes() );
+
                     GUILayout.Space (20);
                     mesh.ActiveMaterial.AutoBake = GUILayout.Toggle( mesh.ActiveMaterial.AutoBake, "Auto Rebake on GridMesh Bake");
                     if ( GUILayout.Button("Bake Material")) {
                         mesh.ActiveMaterial.Bake( mesh );
                     }
+                    
                 }
 
                 break;
@@ -195,9 +208,29 @@ public class SmartSceneWindow : EditorWindow
                 break;
             case 3:
                 toolMode = false;
+                printKeys( "Float Vertex Attributes", db.floatVertexAttributes.Keys.GetEnumerator() );
+                printKeys( "String Vertex Attributes", db.stringVertexAttributes.Keys.GetEnumerator() );
+                printKeys( "Float Level Attributes", db.floatLevelAttributes.Keys.GetEnumerator() );
+                printKeys( "Vertex Groups", db.gridVertexGroups.Keys.GetEnumerator() );
                 break;
             default:
                 break;
+        }
+    }
+
+    public void printWrites( String name, String[] attr ) {
+        GUILayout.Label(name);
+        if ( attr.Length == 0 )
+            GUILayout.Label("\tnone");
+        foreach(String s in attr) {
+            GUILayout.Label("\t" + s);
+        } 
+    }
+
+    public void printKeys( String name, IEnumerator<string> enumerator ) {
+        GUILayout.Label(name);
+        while (enumerator.MoveNext()) {
+            GUILayout.Label("\t" + (string) enumerator.Current );
         }
     }
 

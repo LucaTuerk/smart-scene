@@ -44,7 +44,7 @@
 
             fixed4 frag (v2f i) : SV_Target
             {
-                return i.color;
+                return float4(i.color.rgb, 0.75f);
             }
             ENDCG
         }

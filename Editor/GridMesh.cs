@@ -130,7 +130,7 @@ public class GridMesh : ScriptableObject
         int xNum, zNum;
         // Get side length of grid for desired number of nodes
         // dimensions.x / dimesions.z = xNum / zNum holds for uniform grid 
-        xNum = (int) Mathf.Sqrt( ( dimensions.z / dimensions.x ) * numberOfNodes );
+        xNum = (int) Mathf.Sqrt( ( dimensions.x / dimensions.z ) * numberOfNodes );
         zNum = (int) ( (float) xNum * ( dimensions.z / dimensions.x ) );
         gridDimensions = new Vector3Int(xNum, 0, zNum);
         float stepSize = dimensions.x / gridDimensions.x;

@@ -24,10 +24,13 @@ public class AreaToAreaVisibilityMaterial : ColorMaterial
     
     Vector3 full;
 
-    int areaA, areaB;
+    int indexA, indexB;
+    bool useAreaA, useAreaB;
+
     int samples;
     int max;
     int current;
+    int finished;
     int[] aIndices, bIndices;
     JobHandle[] handles;
     bool baking;
@@ -35,16 +38,34 @@ public class AreaToAreaVisibilityMaterial : ColorMaterial
     NativeArray<RaycastHit>[] results;
     NativeArray<RaycastCommand>[] commands;
     Vector3[][] targets;
+    float[] visibility;
+    float maxVisibility;
     int distinctTargetsCount = 100;
-    static int batches= 100;
-    static int perUpdate = 10;
+   
+    static int numberOfJobs;
     int scheduledCount;
+
+    Stack<int> availableHandles;
+    Stack<int> usedHandles;
+    Stack<int> vertexIndices;
+    Stack<int> confirmedPenumbra;
+    bool firstStage;
+    int check = 64;
+    long castRays;
+
+    float t;
+    System.Diagnostics.Stopwatch watch;
 
     int sampleIndex;
     int distinctIndex;
+    int penumbraIndex;
     System.Random random;
 
-    public AreaToAreaVisibilityMaterial ( String name ) : base ( name, "SmartScene/ColorShader" ) {
+    String vertexAttrName;
+    String wroteAttribute;
+    String maxVisibAttrName;
+
+    public AreaToAreaVisibilityMaterial ( String name ) : base ( name, "SmartScene/VisibilityShader" ) {
         fullHeight = 2.0f;
         crouchHeight = 1.0f;
         samples = 10;
@@ -54,63 +75,80 @@ public class AreaToAreaVisibilityMaterial : ColorMaterial
     }
 
     public override void Bake( GridMesh mesh ) {
-        if ( !baking && areaA <= SmartSceneWindow.db.areas.Count && areaB <= SmartSceneWindow.db.areas.Count ) {
+        if ( !baking ) {
             this.mesh = mesh;
             colors = new Color[mesh.Size];
 
             random = new System.Random();
+
+            aIndices = SmartSceneWindow.db.GetVertexGroup ( indexA, ref useAreaA, mesh);
+            bIndices = SmartSceneWindow.db.GetVertexGroup ( indexB, ref useAreaB, mesh);
             
-            if( areaA != Area.WHOLE_MESH ) aIndices = SmartSceneWindow.db.areas[areaA].GetVertexGroup(mesh);
-            else aIndices = mesh.WHOLE_MESH;
-            
-            if( areaB != Area.WHOLE_MESH ) bIndices = SmartSceneWindow.db.areas[areaB].GetVertexGroup(mesh);
-            else bIndices = mesh.WHOLE_MESH;
+            if ( aIndices != null && bIndices != null && aIndices.Length > 0 && bIndices.Length > 0) {
+                
+                max = Math.Min(aIndices.Length, samples );
+                check = Math.Min(max,check);
+                int arraySize = 2 * check > max ? max : max - check;
 
-            max = Math.Min(aIndices.Length, samples);
+                handles = new JobHandle[numberOfJobs];
+                results = new NativeArray<RaycastHit>[numberOfJobs];
+                commands = new NativeArray<RaycastCommand>[numberOfJobs];
+                
+                targets = new Vector3[distinctTargetsCount][];
 
-            handles = new JobHandle[batches];
-            results = new NativeArray<RaycastHit>[batches];
-            commands = new NativeArray<RaycastCommand>[batches];
-            
-            targets = new Vector3[distinctTargetsCount][];
+                full = Vector3.up * this.fullHeight;
 
-            full = Vector3.up * this.fullHeight;
+                for( int j = 0; j < distinctTargetsCount; j++ ) {
+                    targets[j] = new Vector3[max];
+                    List<int> source = new List<int>(aIndices);
 
-            for( int j = 0; j < distinctTargetsCount; j++ ) {
-                targets[j] = new Vector3[max];
-                List<int> source = new List<int>(aIndices);
-
-                for( int i = 0; i < max; i++ ) {
-                    int index = random.Next(source.Count);
-                    targets[j][i] = mesh[source[index]];
-                    source.RemoveAt(index);
+                    for( int i = 0; i < max; i++ ) {
+                        int index = random.Next(source.Count);
+                        targets[j][i] = mesh[source[index]];
+                        source.RemoveAt(index);
+                    }
                 }
-            }
 
-            for(int i = 0; i < batches; i++) {
-                results[i] = new NativeArray<RaycastHit>(max, Allocator.TempJob);
-                commands[i] = new NativeArray<RaycastCommand>(max, Allocator.TempJob);
+                availableHandles = new Stack<int>();
+                usedHandles = new Stack<int>();
+                vertexIndices = new Stack<int>();
+                confirmedPenumbra = new Stack<int>();
+                visibility = new float[ mesh.Size ];
+                maxVisibility = 0.0f;
+
+                for(int i = 0; i < numberOfJobs; i++) {
+                    results[i] = new NativeArray<RaycastHit>(arraySize, Allocator.Persistent);
+                    commands[i] = new NativeArray<RaycastCommand>(arraySize, Allocator.Persistent);
+                    availableHandles.Push(i);
+                }
+                
+                current = 0;
+                finished = 0;
+                baking = true;
+                isBaked = false;
+                scheduled = false;
+                scheduledCount = 0;
+                progress = 0.0f;
+                watch = System.Diagnostics.Stopwatch.StartNew();
+                t = 0.0f;
+                castRays = 0;
+                firstStage = true;
             }
-            
-            current = 0;
-            baking = true;
-            isBaked = false;
-            scheduled = false;
-            scheduledCount = 0;
-            progress = 0.0f;
         }
     }
 
-    public JobHandle Schedule( Vector3 origin, Vector3[] targets, int index ) 
+    public JobHandle Schedule( Vector3 origin, Vector3[] targets, int index, int minIndex, int maxIndex) 
     {
         Vector3 A = origin + full;
 
-        for( int i = 0; i < targets.Length; i++ ) {
+        for( int i = minIndex, j = 0; i < targets.Length && j < maxIndex; i++, j++ ) {
 
             Vector3 dir = targets[i] + full - A;
 
-            commands[index][i] = 
+            commands[index][j] = 
                 new RaycastCommand( A, dir.normalized, dir.magnitude );
+                
+            castRays++;
         }
 
         return RaycastCommand.ScheduleBatch(commands[index], results[index], 1, default(JobHandle));
@@ -118,46 +156,84 @@ public class AreaToAreaVisibilityMaterial : ColorMaterial
 
     public override void Update() {
         
-         if(!scheduled && baking && !isBaked) {
-                int i = 0;
-                for (; scheduledCount < batches && i < perUpdate && current + scheduledCount < bIndices.Length; i++, scheduledCount++) {
-                    //targets[random.Next(targets.Length)]
-                    handles[scheduledCount] = Schedule( mesh[bIndices[current+scheduledCount]], targets[ (current + scheduledCount) % targets.Length ], scheduledCount );
-                }
-                if ( scheduledCount >= batches - 1 || current + scheduledCount >= bIndices.Length - 1) { 
-                    scheduledCount = 0;
-                    scheduled = true;
-                }
+        if (baking ) {
+            
+            if ( finished + confirmedPenumbra.Count == bIndices.Length ) {
+                firstStage = false;
             }
-        
-        for ( int j = 0; j < perUpdate; j++ ) {
-           
-            if( scheduled && baking && !isBaked && current < bIndices.Length && handles[current%batches].IsCompleted )
-            {  
-                handles[current%batches].Complete();
 
-                int f2f = 0;
-                foreach( RaycastHit h in results[current%batches] ) {
-                    f2f += (h.collider == null) ? 1 : 0;
-                }
-                float f2ffac = (float) f2f / (float) ( max );
-                colors[bIndices[current]] = new Color( f2ffac, f2ffac, f2ffac, 1.0f );
-                
-                current++;
-                if(current % batches == 0)
-                    scheduled = false;
-    
-                progress = (float) current / bIndices.Length;
+            while( usedHandles.Count != 0 && handles[usedHandles.Peek()].IsCompleted ) {
+                    int index = usedHandles.Pop();
+                    availableHandles.Push(index);
+                    handles[index].Complete();
 
-                if ( current == bIndices.Length ) {
-                    baking = false;
-                    isBaked = true;
-                    for ( int i = 0; i < batches; i++ ) {
-                        results[i].Dispose();
-                        commands[i].Dispose();
+                    int f2f = 0;
+                    int c = 0;
+                    int localMax = firstStage ? check : max - check;
+
+                    foreach( RaycastHit h in results[index] ) {
+                        f2f += (h.collider == null) ? 1 : 0;
+                        if ( ++c== localMax ) 
+                            break;
                     }
-                }
-            } 
+                    float f2ffac = (float) f2f / (float) ( firstStage ? check : max - check);
+                    int vert = bIndices[vertexIndices.Pop()];
+
+                    if ( firstStage ) {
+                        if (f2f == 0|| f2f == localMax || max == check) {
+                            finished ++;
+                        } else {
+                            confirmedPenumbra.Push(vert);
+                        }
+                        visibility[vert] = f2ffac;
+                    } else {
+                        double  ratio = (double) check / (double) max;
+                        visibility[vert] = (float) (ratio * (double) visibility[vert] + (1-ratio) * (double) f2ffac);
+                        finished++;
+                    }
+
+                    colors[vert] = new Color( visibility[vert] , visibility[vert] , visibility[vert] , 1.0f );
+                    maxVisibility = Mathf.Max( maxVisibility, visibility[vert] );
+        
+                    progress = (float) finished / bIndices.Length;
+
+                    if ( finished == bIndices.Length ) {
+                        watch.Stop();
+                        t = (float) ((double) watch.ElapsedMilliseconds / 1000.0);
+
+                        SmartSceneWindow.db.AddPerVertexFloatAttribute( vertexAttrName, visibility );
+                        SmartSceneWindow.db.AddFloatLevelAttribute( maxVisibAttrName, maxVisibility );
+
+                        baking = false;
+                        isBaked = true;
+                        
+
+                        for ( int i = 0; i < numberOfJobs; i++ ) {
+                            results[i].Dispose();
+                            commands[i].Dispose();
+                        }
+                    }
+            }
+
+            while( availableHandles.Count != 0 && ( current != bIndices.Length || ( !firstStage && confirmedPenumbra.Count != 0 ))) {
+                    int index = availableHandles.Pop();
+
+                    usedHandles.Push(index);
+                    
+                    int currentVert = firstStage ? current : confirmedPenumbra.Pop();
+                    vertexIndices.Push(currentVert);
+
+                    int mini, maxi;
+                    if (firstStage) {
+                        mini = 0; maxi = check;
+                    } else {
+                        mini = check; maxi = max;
+                    }
+
+                    handles[index] = Schedule( mesh[bIndices[currentVert]], targets[ (currentVert) % targets.Length ], index, mini, maxi);
+                    
+                    if ( firstStage ) current++;
+            }
         }
     }
 
@@ -171,23 +247,37 @@ public class AreaToAreaVisibilityMaterial : ColorMaterial
         if ( !baking ) {
 
             GUILayout.Label("Area A:");
-            areaA = SmartSceneWindow.db.AreaSelectGUI(areaA, false, true);
+            indexA = SmartSceneWindow.db.VertexGroupSelectGUI(indexA, ref useAreaA);
             GUILayout.Label("Area B:");
-            areaB = SmartSceneWindow.db.AreaSelectGUI(areaB, false, true);
+            indexB = SmartSceneWindow.db.VertexGroupSelectGUI(indexB, ref useAreaB);
 
-            String[] sampleChoise = {"32", "64", "128", "256", "512", "1024", "2048"};
-            String[] distinctChoise = {"1", "5", "25", "50", "100", "200"};
             
+            String a = SmartSceneWindow.db.GetVertexGroupName( indexA, useAreaA );
+            String b = SmartSceneWindow.db.GetVertexGroupName( indexB, useAreaB );
+
+            vertexAttrName = a + "_TO_" + b + "_VISIBILITY_"+samples + "_" + check;
+            maxVisibAttrName = a + "_TO_" + b + "_MAX_VISIBILITY";
+            
+        
+            String[] sampleChoise = {"32", "64", "128", "256", "512", "1024", "2048"};
+            String[] penumbraChoise = { "8", "16", "32", "64", "128", "256", "512"};
+            String[] distinctChoise = {"1", "5", "25", "50", "100", "200"};
+
             GUILayout.Label("Samples: ");
+            int temp = sampleIndex;
             sampleIndex = GUILayout.Toolbar (sampleIndex, sampleChoise);
+            if ( sampleIndex != temp ) penumbraIndex = sampleIndex;
+            GUILayout.Label("Penumbra Samples: ");
+            penumbraIndex = GUILayout.Toolbar (penumbraIndex, penumbraChoise);
             GUILayout.Label("Distinct Target Sets: ");
             distinctIndex = GUILayout.Toolbar (distinctIndex, distinctChoise);
+
             
-            GUILayout.Label("Batches: " + batches);
-            batches = (int) GUILayout.HorizontalSlider ( (float) batches, 10.0f, 20_000.0f );
+            GUILayout.Label("Number of Jobs: " + numberOfJobs);
+            numberOfJobs = Math.Min( Math.Max( (int) GUILayout.HorizontalSlider ( (float) numberOfJobs, 10.0f, 5000.0f ), 10 ), 5000);
             GUILayout.Space(10);
-            GUILayout.Label("Per Update: " + perUpdate);
-            perUpdate = Math.Min( (int) GUILayout.HorizontalSlider ( (float) perUpdate, 1.0f, batches ), batches );
+            GUILayout.Label("Decrease for Editor Responsiveness \nIncrease for faster render times [citation needed].");
+            GUILayout.Space(10);
 
             switch( sampleIndex ) {
                 case 0: samples = 32;
@@ -203,6 +293,24 @@ public class AreaToAreaVisibilityMaterial : ColorMaterial
                 case 5: samples = 1024;
                         break;
                 case 6: samples = 2048;
+                    break;
+                default: break;
+            }
+
+            switch( penumbraIndex ) {
+                case 0: check = 8;
+                        break;
+                case 1: check = 16;
+                        break;
+                case 2: check = 32;
+                        break;
+                case 3: check = 64;
+                        break;
+                case 4: check = 128;
+                        break;
+                case 5: check = 256;
+                        break;
+                case 6: check = 512;
                     break;
                 default: break;
             }
@@ -225,6 +333,10 @@ public class AreaToAreaVisibilityMaterial : ColorMaterial
 
             GUILayout.Space(10);
             GUILayout.Space(10);
+            if( t != 0.0f ) {
+                GUILayout.Label("Rendertime: " + t +" seconds");
+                GUILayout.Label("Cast Rays: " + castRays);
+            }
         }
         else {
             GUILayout.Label("Baking ... " + (int) ( Progress * 100.0f) + "%" );
@@ -232,10 +344,12 @@ public class AreaToAreaVisibilityMaterial : ColorMaterial
 
     }
 
-    public void Initialize () {
-        if ( areaA != areaB && areaA < SmartSceneWindow.db.areas.Count && areaB < SmartSceneWindow.db.areas.Count ) {
-            aIndices = SmartSceneWindow.db.areas[areaA].GetVertexGroup(mesh);
-            bIndices = SmartSceneWindow.db.areas[areaB].GetVertexGroup(mesh);
-        }
+    public override String[] ProvidesVertexAttributes() { 
+        return new String[] { vertexAttrName };
     }
+    public override String[] WritesLevelAttributes()         { 
+        return new String[] { maxVisibAttrName };
+    }
+    public override String[] ProvidesGridVertexGroups()      { return new String[0]; }
+    public override String[] ProvidesOffGridVertexGroups()   { return new String[0]; }
 }

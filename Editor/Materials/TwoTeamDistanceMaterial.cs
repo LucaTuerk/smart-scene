@@ -9,9 +9,9 @@ using UnityEditor;
 public class TwoTeamDistanceMaterial : ColorMaterial
 {
     [SerializeField]
-    List<Vector3> redTeam;
+    String redTeam;
     [SerializeField]
-    List<Vector3> blueTeam;
+    String blueTeam;
     [SerializeField]
     float maxDist;
     [SerializeField]
@@ -22,10 +22,10 @@ public class TwoTeamDistanceMaterial : ColorMaterial
     bool showBlue = true;
     [SerializeField]
     bool showMeetingpoint = false;
+    [SerializeField]
+    bool overlap = true;
 
     public TwoTeamDistanceMaterial ( String name ) : base ( name, "SmartScene/TwoTeamDist") {
-        this.redTeam = new List<Vector3>();
-        this.blueTeam = new List<Vector3>();
     }
 
     public override void Bake( GridMesh mesh ) {
@@ -35,21 +35,31 @@ public class TwoTeamDistanceMaterial : ColorMaterial
         float[] redDist = new float[mesh.Size];
         float[] blueDist = new float[mesh.Size];
 
+        bool[] redExists = new bool[mesh.Size];
+        bool[] blueExists = new bool[mesh.Size];
+
+        Vector3[] red = SmartSceneWindow.db.GetOffGridVertexGroup(redTeam);
+        Vector3[] blue = SmartSceneWindow.db.GetOffGridVertexGroup(blueTeam);
+
         NavMeshPath path = new NavMeshPath();
 
         for ( int i = 0; i < mesh.Size; i++ ) {
             redDist[i] = float.PositiveInfinity;
             blueDist[i] = float.PositiveInfinity;
+            redExists[i] = false;
+            blueExists[i] = false;
 
-            foreach ( Vector3 vec in redTeam ) {
+            foreach ( Vector3 vec in red ) {
                 if ( NavMesh.CalculatePath ( vec, mesh[i], NavMesh.AllAreas, path) ) {
                     redDist[i] = Mathf.Min ( redDist[i], GetPathLength ( path ) );
+                    redExists[i] = true;
                 }
             }
 
-            foreach ( Vector3 vec in blueTeam ) {
+            foreach ( Vector3 vec in blue ) {
                 if ( NavMesh.CalculatePath ( vec, mesh[i], NavMesh.AllAreas, path) ) {
                     blueDist[i] = Mathf.Min ( blueDist[i], GetPathLength ( path ) );
+                    blueExists[i] = true;
                 }
             }
 
@@ -64,17 +74,17 @@ public class TwoTeamDistanceMaterial : ColorMaterial
         colors = new Color[mesh.Size];
         for ( int i = 0; i < mesh.Size; i++ ) {
             colors[i] = new Color (
-                redDist[i] / maxDist,                           //r
-                0.0f,                                           //g
-                blueDist[i] / maxDist,                          //b
-                (redDist[i] + blueDist[i] > 0.0f) ? 1.0f : 0.0f //a
+                redDist[i] != float.PositiveInfinity ? redDist[i] / maxDist : 0.0f,                           //r
+                redExists[i] ? 1.0f : 0.0f,                     //g
+                blueDist[i] != float.PositiveInfinity ? blueDist[i] / maxDist : 0.0f,                          //b
+                blueExists[i] ? 1.0f : 0.0f                     //a
             );
         }
 
-        // mesh.AddPerVertexFloatAttribute( redDistanceAttribute, redDist );
-        // mesh.AddPerVertexFloatAttribute( blueDistanceAttribute, blueDist );
-        // mesh.AddOffGridVertexGroup( blueSpawns, blueTeam.ToArray() );
-        // mesh.AddOffGridVertexGroup( redSpawns, redTeam.ToArray() );
+        if ( redDistanceAttribute != null & redDistanceAttribute != "" )
+            SmartSceneWindow.db.AddPerVertexFloatAttribute( redDistanceAttribute, redDist );
+        if ( blueDistanceAttribute != null & blueDistanceAttribute != "")
+            SmartSceneWindow.db.AddPerVertexFloatAttribute( blueDistanceAttribute, blueDist );
 
         isBaked = true;
         if ( showDist > maxDist || showDist == 0.0f ) 
@@ -91,7 +101,9 @@ public class TwoTeamDistanceMaterial : ColorMaterial
             material.SetInt("_showRed", showRed ? 1 : 0);
             material.SetInt("_showBlue", showBlue ? 1 : 0);
             material.SetInt("_showMeeting", showMeetingpoint ? 1 : 0);
-        }
+            material.SetInt("_Overlap", overlap ? 1 : 0 );
+        
+        }    
     }
 
     //https://forum.unity.com/threads/getting-the-distance-in-nav-mesh.315846/
@@ -99,7 +111,7 @@ public class TwoTeamDistanceMaterial : ColorMaterial
     {
         float lng = 0.0f;
        
-        if (( path.status != NavMeshPathStatus.PathInvalid ) && ( path.corners.Length > 1 ))
+        if (( path.status == NavMeshPathStatus.PathComplete ) && ( path.corners.Length > 1 ))
         {
             for ( int i = 1; i < path.corners.Length; ++i )
             {
@@ -120,28 +132,16 @@ public class TwoTeamDistanceMaterial : ColorMaterial
         }
         GUILayout.Space(20);
 
-        GUILayout.Label("Add Transform position as:");
-        if ( GUILayout.Button("red spawn") && selected != null ) {
-            redTeam.Add(selected.position);
-        }
-        if ( GUILayout.Button("blue spawn")  && selected != null ) {
-            blueTeam.Add(selected.position);
-        }
-        GUILayout.Space(10);
-
         GUILayout.Label("Red Spawns:");
-        foreach ( Vector3 pos in redTeam ) {
-            GUILayout.Label ( "\t" + pos );
-        }
+        redTeam = SmartSceneWindow.db.OffGridVertexGroupSelectGUI(redTeam);
         GUILayout.Label("Blue Spawns:");
-        foreach ( Vector3 pos in blueTeam ) {
-            GUILayout.Label ( "\t" + pos );
-        }
+        blueTeam = SmartSceneWindow.db.OffGridVertexGroupSelectGUI(blueTeam);
 
         if ( isBaked ) {
             GUILayout.Space(20);
             GUILayout.Label("Distance: [0 .. "+maxDist+"]:");
             showDist = GUILayout.HorizontalSlider(showDist, 0.001f, maxDist );
+            GUILayout.Space(10);
             string str = GUILayout.TextField( ""+showDist);
             float temp;
             if (float.TryParse(str, out temp)) {
@@ -152,31 +152,31 @@ public class TwoTeamDistanceMaterial : ColorMaterial
             showRed = GUILayout.Toggle( showRed, "Show red");
             showBlue = GUILayout.Toggle( showBlue, "Show blue");
             showMeetingpoint = GUILayout.Toggle( showMeetingpoint, "Show Meetingpoint");
+            overlap = GUILayout.Toggle( overlap, "Overlap");
             SceneView.RepaintAll();
             GUILayout.Space(20);
         }
 
-        if ( redTeam.Count + blueTeam.Count > 0 ) {
-            if ( GUILayout.Button("Clear Spawns") ) {
-                redTeam.Clear();
-                blueTeam.Clear();
-            }
-        }
+        GUILayout.Label("Blue Distance Vertex Attribute: ");
+        blueDistanceAttribute = GUILayout.TextField(blueDistanceAttribute);
+
+        GUILayout.Label("Red Distance Vertex Attribute: ");
+        redDistanceAttribute = GUILayout.TextField(redDistanceAttribute);
     }
 
-    String blueDistanceAttribute = "blueTeamDistanceFromSpawn";
-    String redDistanceAttribute = "redTeamDistanceFromSpawn";
+    String blueDistanceAttribute = "blueTeamDistance";
+    String redDistanceAttribute = "redTeamDistance";
     String blueSpawns = "blueSpawnPositions";
     String redSpawns = "redSpawnPositions";
     String maxDistanceAttribute = "maxDistance";
 
-    public String[] WritesVertexAttributes() {
+    public override String[] ProvidesVertexAttributes() {
         return new String[] {
             blueDistanceAttribute,
             redDistanceAttribute
         };
     }
-    public String[] WritesLevelAttributes() {
+    public override String[] WritesLevelAttributes() {
         return new String[] {
             maxDistanceAttribute,
             blueSpawns,

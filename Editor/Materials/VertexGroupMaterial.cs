@@ -2,23 +2,25 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System.Linq;
 
 [Serializable]
 public class VertexGroupMaterial : SimpleColorMaterial
 {
     int index = 0;
+    bool useArea = true;
 
     public VertexGroupMaterial (String name) : base(name) {}
 
     public override void Bake( GridMesh mesh ) {
         colors = new Color[mesh.Size];
       
-        int[] group = SmartSceneWindow.db.areas[index].GetVertexGroup( mesh );
+        int[] group = useArea ? SmartSceneWindow.db.areas[index].GetVertexGroup( mesh ) : SmartSceneWindow.db.gridVertexGroups.ElementAt(index).Value;
 
         Debug.Log(group.Length);
 
         for ( int i = 0; i < colors.Length; i++ ) {
-            if (Includes( group, i ) ) {
+            if ( Includes( group, i ) ) {
                 colors[i] = new Color(1,1,1,1);
             }
             else {
@@ -60,6 +62,6 @@ public class VertexGroupMaterial : SimpleColorMaterial
     }
 
     public override void DrawGUI() {
-        index = SmartSceneWindow.db.AreaSelectGUI(index);
+        index = SmartSceneWindow.db.VertexGroupSelectGUI( index, ref useArea );
     }
 }

@@ -78,8 +78,8 @@ public abstract class SmartSceneMaterial
 
     public abstract void DrawGUI();
 
-    public String[] ProvidesVertexAttributes()      { return new String[0]; }
-    public String[] WritesLevelAttributes()         { return new String[0]; }
-    public String[] ProvidesGridVertexGroups()      { return new String[0]; }
-    public String[] ProvidesOffGridVertexGroups()   { return new String[0]; }
+    public virtual String[] ProvidesVertexAttributes()      { return new String[0]; }
+    public virtual String[] WritesLevelAttributes()         { return new String[0]; }
+    public virtual String[] ProvidesGridVertexGroups()      { return new String[0]; }
+    public virtual String[] ProvidesOffGridVertexGroups()   { return new String[0]; }
 } 
