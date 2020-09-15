@@ -16,15 +16,15 @@ Then simply click Bake.
 
 ### Tools
 #### Single Paths Tool
-To use the single paths tool, open the Tools/Path Lenght tabs in the smart-scene window.
+To use the single paths tool, open the (Tools/Path Lenght) tab in the smart-scene window.
 Then add corner points in the scene to calculate the length of the connecting path.
 
 #### Area Designation
-To designate an Area, go to the Tools/Mark Area tab, click "Add Area" and mark the corners of the
+To designate an area, go to the (Tools/Mark Area tab), click "Add Area" and mark the corners of the
 area in the scene.
 
 #### Marking Groups
-To designate marking groups, open the Tools/Mark/Marking Groups tab and add a new group.
+To designate marking groups, open the (Tools/Mark/Marking Groups) tab and add a new group.
 Vertices can be added by clicking the scene.
 
 ### Materials
