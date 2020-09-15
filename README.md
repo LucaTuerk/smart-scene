@@ -43,17 +43,17 @@ Once the material is baked, a slider will appear, that can be used to change the
 #### Area To Area Visibility
 First mark your areas in the tools section, and select them  as A (source area) and B (target area) in the material. Here you can also choose to use the whole mesh or additional vertex groups.
 
-Samples and Penumbra Samples then selects how many samples are used in each stage of the adaptive raytracing.
-Penumbra Samples are automatically selected as a quarter of Samples.
+Samples and penumbra samples then selects how many samples are used in each stage of the adaptive raytracing.
+Penumbra Samples are automatically selected as a quarter of the samples.
 
-Distinct Target Sets decides how many different target sets are generated for the source area.
+Distinct target sets decides how many different target sets are generated for the source area.
 
-Number of jobs decides, how many visibility values are calculated per frame. Increase for faster rendering times.
+Number of jobs selects, how many visibility values are calculated per frame. Increase for faster rendering times.
 
 #### Value Range Material
 First select a float attribute. If no dropdown menu exists, toggle "choose from existing attributes".
-Then click "set selector MinMax from data" to adjust the range selector to the data. 
-Then select your range and whether the minimum and maximum, name your vertex group and click bake.
+Then click "set selector MinMax from data" to adjust the range selector for the data. 
+Then select your range and whether the minimum and maximum, name your vesrtex group and click bake.
 
 #### Set Logic Material
 First select your areas or vertex groups, and the intended logical operation.
