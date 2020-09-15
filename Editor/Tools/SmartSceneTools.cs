@@ -15,10 +15,7 @@ public class SmartSceneTools
 
     Mesh flagMesh;
     Material flagMaterial;
-
-    bool toolMode = true;
     
-    bool markingMode = false;
     bool marked = false;
     Marking primaryMarking;
     public Vector3 Marking {
@@ -32,7 +29,6 @@ public class SmartSceneTools
     float dist = 0.0f;
     float playerSpeed = 5.0f;
 
-    bool meterstabMode = false;
     Meterstab meterstab;
 
     int selectedArea;

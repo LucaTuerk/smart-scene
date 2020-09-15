@@ -39,7 +39,6 @@ public class SmartSceneDB
         stringGridVertexGroups = new SerializableDictionary<String, String>();
     }
 
-
     public void SetGridMesh( GridMesh mesh ) {
         gridMesh = mesh;
     }
@@ -282,5 +281,23 @@ public class SmartSceneDB
             new List<Vector3>();
         list.Add(pos);
         offGridVertexGroups[key] = list.ToArray();
-    } 
+    }
+
+    public void Reload() {
+        if( areas == null ) areas = new List<Area>();
+        if( areaNames == null ) areaNames = new List<String>();
+
+        if( floatVertexAttributes == null ) floatVertexAttributes = new SerializableDictionary<String, float[]>();
+        if( stringVertexAttributes == null ) stringVertexAttributes = new SerializableDictionary<String, String[]>();
+
+        if( gridVertexGroups == null ) gridVertexGroups = new SerializableDictionary<String, int[]>();
+        if( gridVertexGroups == null ) offGridVertexGroups = new SerializableDictionary<String, Vector3[]>();
+
+        if( floatLevelAttributes == null ) floatLevelAttributes = new SerializableDictionary<String, float>();
+        if( stringGridVertexGroups == null) stringGridVertexGroups = new SerializableDictionary<String, String>();
+    
+        foreach ( Area area in areas) {
+            area.ReloadShader();
+        }
+    }
 }

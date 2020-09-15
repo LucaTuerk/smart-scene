@@ -7,6 +7,7 @@ using UnityEngine.AI;
 using UnityEditor;
 using System.Linq;
 using System.Reflection;
+using UnityEditor.SceneManagement;
 
 [Serializable]
 public class GridMesh : ScriptableObject
@@ -21,6 +22,8 @@ public class GridMesh : ScriptableObject
         get { return vertLayerLimit; }
     }
 
+    public string sceneName;
+
     // Mesh data 
     Mesh gridMesh;
     [SerializeField] Vector3[] vertices;
@@ -31,6 +34,11 @@ public class GridMesh : ScriptableObject
     public int Size {
         get { return gridMesh == null ? 0 : gridMesh.vertexCount; }
     }
+
+    // DB
+    public SmartSceneDB db;
+    [SerializeField]
+    string dbJson;
 
     public int[] WHOLE_MESH {
         get {
@@ -291,6 +299,7 @@ public class GridMesh : ScriptableObject
         // Set Flag
         doneBaking = true;
         vertLayerLimit = numberOfNodes;
+        sceneName = EditorSceneManager.GetActiveScene().name;
 
         // Bake materials
         foreach( SmartSceneMaterial mat in materials) {
@@ -306,7 +315,7 @@ public class GridMesh : ScriptableObject
         for ( int i = 0; i < neighbors.Length; i++ ) {
             if ( ! NavMesh.Raycast(pos, neighbors[i], out hit, NavMesh.AllAreas) ) {
                 float currDist = Vector3.Distance(pos, neighbors[i]);
-                if ( currDist < dist && currDist < 10.0f) {
+                if ( currDist < dist ) {
                     index = i;
                     dist = currDist;
                 }
@@ -366,7 +375,6 @@ public class GridMesh : ScriptableObject
 
     public int[] SampleIndicesInRange ( Vector3 positions, float distance ) {
         List<int> indices = new List<int>();
-        Vector3 curr;
         for( int i = 0; i < gridMesh.vertexCount; i++ ) {
             if ( Vector3.Distance ( positions, gridMesh.vertices [i] ) < distance ) {
                 indices.Add(i);
@@ -416,6 +424,9 @@ public class GridMesh : ScriptableObject
 
         foreach ( SmartSceneMaterial mat in materials )
             mat.Reload (this);
+
+        LoadDB();
+        if(db != null) db.Reload();
     }
 
     public void BakeMaterial ( int index ) {
@@ -430,6 +441,15 @@ public class GridMesh : ScriptableObject
     public void SaveMesh() {
         vertices = gridMesh.vertices;
         triangles = gridMesh.triangles;
+        SaveDB();
+    }
+
+    public void SaveDB() {
+        dbJson = JsonUtility.ToJson( db );
+    }
+
+    public void LoadDB() {
+        db = (SmartSceneDB) JsonUtility.FromJson<SmartSceneDB>( dbJson );
     }
 
     public void SaveMaterials() {

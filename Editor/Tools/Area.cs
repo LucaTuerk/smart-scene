@@ -5,6 +5,7 @@ using UnityEngine;
 using UnityEditor;
 using UnityEngine.AI;
 
+[Serializable]
 public class Area {
     Mesh collisionMesh;
 
@@ -12,15 +13,12 @@ public class Area {
     Material areaMat;
 
     public String name;
-    Color areaColor;
-
-    bool showOutline;
-    bool showMesh;
+    public Color areaColor;
 
     MeshCollider collider;
     GameObject gameObject;
 
-    int[] vertexGroup;
+    [SerializeField] int[] vertexGroup;
 
     public static int WHOLE_MESH {
         get {
@@ -46,6 +44,11 @@ public class Area {
         collisionMesh = null;
         vertexGroup = null;
         markings.Add(current);
+    }
+
+
+    public void ReloadShader() {
+        areaMat = new Material ( Shader.Find("SmartScene/AreaShader"));
     }
 
     public void RemoveVertex() {

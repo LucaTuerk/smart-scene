@@ -2,19 +2,28 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
+using UnityEditor.SceneManagement;
+using UnityEngine.SceneManagement;
 
+
+/*
+
+*/
 public class SmartSceneWindow : EditorWindow
 {
-    GridMesh mesh;
-    
+    // Selected object in scene
     Transform selected;
-    int num;
 
+    // Selected Editor tab
     int tab = 0;
     bool debug;
+    bool toolMode = false;
+
+
+    // GridMesh Settings
+    GridMesh mesh;
+    int veticalLayerLimit;
     bool optimizeMesh = true;
-    bool toolMode  = false;
-    Material mat;
     float verticalOffset = 0.1f;
 
     public static SmartSceneTools tools;
@@ -35,8 +44,18 @@ public class SmartSceneWindow : EditorWindow
     }
 
     void OnEnable() {
+        LoadGridMesh();
+        SceneView.duringSceneGui += this.OnSceneGUI;
+        Camera.onPostRender += this.OnPostRender;
+        EditorSceneManager.sceneOpened += this.OnSceneOpened;
+    }
+
+    void LoadGridMesh() {
+        string scene = EditorSceneManager.GetActiveScene().name;
+        Debug.Log(scene);
+
         if ( mesh == null )
-            mesh = AssetDatabase.LoadAssetAtPath( "Assets/Editor/SmartScene/GridMesh.asset", typeof( GridMesh ) ) as GridMesh;
+            mesh = AssetDatabase.LoadAssetAtPath( "Assets/Editor/SmartScene/" + scene + "/GridMesh.asset", typeof( GridMesh ) ) as GridMesh;
         // Create Asset Files
         if ( mesh == null ) {
             Debug.Log("SmartScene: Creating GridMesh asset" );
@@ -47,18 +66,19 @@ public class SmartSceneWindow : EditorWindow
             if ( !AssetDatabase.IsValidFolder( "Assets/Editor/SmartScene" ) ) {
                 AssetDatabase.CreateFolder("Assets/Editor", "SmartScene"); 
             }
-            if ( !AssetDatabase.IsValidFolder( "Assets/Editor/SmartScene/SmartSceneMaterials" ) ) {
-                AssetDatabase.CreateFolder("Assets/Editor/SmartScene", "SmartSceneMaterials"); 
+            if( !AssetDatabase.IsValidFolder( "Assets/Editor/SmartScene/" + scene ) ) {
+                AssetDatabase.CreateFolder("Assets/Editor/SmartScene", scene); 
             }
+
             mesh = ScriptableObject.CreateInstance<GridMesh>();
             mesh.Init();
-            AssetDatabase.CreateAsset(mesh, "Assets/Editor/SmartScene/GridMesh.asset");
+            AssetDatabase.CreateAsset(mesh, "Assets/Editor/SmartScene/" + scene + "/GridMesh.asset");
             AssetDatabase.Refresh();
             EditorUtility.SetDirty(mesh);
 
             mesh.ClearMaterials();
             mesh.AddSmartSceneMaterial(
-                new TwoTeamDistanceMaterial("Distance")
+                new TwoTeamDistanceMaterial("Two Team Distance")
             );
             mesh.AddSmartSceneMaterial(
                 new SingleViewPointVisibilityMaterial("Single Point Visibility")
@@ -73,10 +93,10 @@ public class SmartSceneWindow : EditorWindow
                 new VertexGroupMaterial("Vertex Group Material")
             );
             mesh.AddSmartSceneMaterial(
-                new LogicOpsVertexGroupMaterial("Logic Ops Vertex Group Material")
+                new LogicOpsVertexGroupMaterial("Set Logic Material")
             );
             mesh.AddSmartSceneMaterial(
-                new FloatMinMaxToGroupMaterial("Float Min Max Material")
+                new FloatMinMaxToGroupMaterial("Value Range Material")
             );
             mesh.AddSmartSceneMaterial(
                 new ErrorMaterial("Error Material")
@@ -87,21 +107,35 @@ public class SmartSceneWindow : EditorWindow
             mesh.ReloadMesh();
             EditorUtility.SetDirty(mesh);
         }
-        num = mesh.VertLayerLimit;
+        veticalLayerLimit = mesh.VertLayerLimit;
 
         tools = new SmartSceneTools();
-        db = new SmartSceneDB();
-        db.SetGridMesh(mesh);
-
-        SceneView.onSceneGUIDelegate += this.OnSceneGUI;
-        Camera.onPostRender += this.OnPostRender;
+        if( mesh.db == null ) {
+            mesh.db = new SmartSceneDB();
+        }
+        mesh.db.SetGridMesh(mesh);
+        db = mesh.db;
     }
 
     void OnDisable() {
         mesh?.SaveMaterials();
-
-        SceneView.onSceneGUIDelegate -= this.OnSceneGUI;
+        mesh?.SaveDB();
+        SceneView.duringSceneGui -= this.OnSceneGUI;
         Camera.onPostRender -= this.OnPostRender;
+        EditorSceneManager.sceneOpened -= this.OnSceneOpened;    
+    }
+
+    void OnSceneOpened(Scene scene, OpenSceneMode mode) {
+        Debug.Log("Active Scene Changed");
+        // Save GridMesh Data
+        mesh?.SaveMaterials();
+        mesh?.SaveDB();
+        AssetDatabase.SaveAssets();
+        // Make sure changes dont get saved to disk
+        EditorUtility.ClearDirty(mesh);
+        // Nullify Mesh
+        mesh = null;
+        this.LoadGridMesh();
     }
 
     void OnGUI()
@@ -155,6 +189,7 @@ public class SmartSceneWindow : EditorWindow
                 toolMode = false;
                 GUILayout.Label("Grid Mesh Settings", title);
                 GUILayout.Label("Current Mesh:", subTitle);
+                GUILayout.Label( mesh.DoneBaking ? "Scene: " + mesh.sceneName : "", rightAlign);
                 GUILayout.Label( mesh.DoneBaking ? "Baking finished" : "Baking outstanding", rightAlign );
                 GUILayout.Label( mesh.DoneBaking ? mesh.Size + " vertices" : "" , rightAlign );
                 GUILayout.Label( mesh.DoneBaking ? "Dimensions: " + mesh.Dimensions : "", rightAlign );
@@ -170,15 +205,15 @@ public class SmartSceneWindow : EditorWindow
                 GUILayout.Label("maximum number of vertices per vertical layer: ");
                 
                 int temp;
-                String str = GUILayout.TextField( num == 0 ? "" : ""+num, rightAlignField);
+                String str = GUILayout.TextField( veticalLayerLimit == 0 ? "" : ""+veticalLayerLimit, rightAlignField);
                 if ( Int32.TryParse( str, out temp ) ) {
-                    num = temp;
+                    veticalLayerLimit = temp;
                 }
                 else if ( str == "" ) {
-                    num = 0;
+                    veticalLayerLimit = 0;
                 }
-                GUILayout.Label("Expected asset size:\t\t" + SmartSceneUtilities.SizeInMiB(num) + " MiB");
-                GUILayout.Label("Size per float data set:\t" + SmartSceneUtilities.DataSizeInMiB(num) + " MiB");
+                GUILayout.Label("Expected asset size:\t\t" + SmartSceneUtilities.SizeInMiB(veticalLayerLimit) + " MiB");
+                GUILayout.Label("Size per float data set:\t" + SmartSceneUtilities.DataSizeInMiB(veticalLayerLimit) + " MiB");
                 GUILayout.Space(10);
                 optimizeMesh = GUILayout.Toggle( optimizeMesh, "Optimize Mesh for Rendering");
 
@@ -191,7 +226,7 @@ public class SmartSceneWindow : EditorWindow
                 GUILayout.Space(10);
                 if ( GUILayout.Button( "Bake Grid Mesh")) {
                     db.ResetAreaVertexGroups();
-                    mesh.Bake(num, optimizeMesh);
+                    mesh.Bake(veticalLayerLimit, optimizeMesh);
                 }
 
                 if (debug ) {

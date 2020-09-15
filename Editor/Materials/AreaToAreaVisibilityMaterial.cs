@@ -11,17 +11,7 @@ using Unity.Jobs;
 public class AreaToAreaVisibilityMaterial : ColorMaterial
 {
     [SerializeField]
-    Vector3 viewPoint;
-
-    [SerializeField]
     float fullHeight;
-    [SerializeField]
-    float crouchHeight;
-    [SerializeField]
-    bool onlyFullToFull = false;
-    [SerializeField]
-    bool invert = false;
-    
     Vector3 full;
 
     int indexA, indexB;
@@ -34,7 +24,6 @@ public class AreaToAreaVisibilityMaterial : ColorMaterial
     int[] aIndices, bIndices;
     JobHandle[] handles;
     bool baking;
-    bool scheduled;
     NativeArray<RaycastHit>[] results;
     NativeArray<RaycastCommand>[] commands;
     Vector3[][] targets;
@@ -43,7 +32,6 @@ public class AreaToAreaVisibilityMaterial : ColorMaterial
     int distinctTargetsCount = 100;
    
     static int numberOfJobs;
-    int scheduledCount;
 
     Stack<int> availableHandles;
     Stack<int> usedHandles;
@@ -67,7 +55,6 @@ public class AreaToAreaVisibilityMaterial : ColorMaterial
 
     public AreaToAreaVisibilityMaterial ( String name ) : base ( name, "SmartScene/VisibilityShader" ) {
         fullHeight = 2.0f;
-        crouchHeight = 1.0f;
         samples = 10;
         baking = false;
         sampleIndex = 0;
@@ -126,8 +113,6 @@ public class AreaToAreaVisibilityMaterial : ColorMaterial
                 finished = 0;
                 baking = true;
                 isBaked = false;
-                scheduled = false;
-                scheduledCount = 0;
                 progress = 0.0f;
                 watch = System.Diagnostics.Stopwatch.StartNew();
                 t = 0.0f;
@@ -173,14 +158,14 @@ public class AreaToAreaVisibilityMaterial : ColorMaterial
 
                     foreach( RaycastHit h in results[index] ) {
                         f2f += (h.collider == null) ? 1 : 0;
-                        if ( ++c== localMax ) 
+                        if ( ++c == localMax ) 
                             break;
                     }
                     float f2ffac = (float) f2f / (float) ( firstStage ? check : max - check);
                     int vert = bIndices[vertexIndices.Pop()];
 
                     if ( firstStage ) {
-                        if (f2f == 0|| f2f == localMax || max == check) {
+                        if (f2f == 0 || f2f == localMax || max == check) {
                             finished ++;
                         } else {
                             confirmedPenumbra.Push(vert);
