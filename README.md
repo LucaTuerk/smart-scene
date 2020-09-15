@@ -36,9 +36,9 @@ To use distance values as vertex attributes in other materials enter a name for 
 
 Once the material is baked, a slider will appear, that can be used to change the threshold distance.
 ##### Additional options are:
-Show red, Show blue: Selectively turn of rendering for one team
-Overlap: Overlap colors to show advance beyond meeting points
-Meetingpoint: Show meeting point. The distance slider grows and shrinks the meeting area.
+* Show red, Show blue: Selectively turn of rendering for one team
+* Overlap: Overlap colors to show advance beyond meeting points
+* Meetingpoint: Show meeting point. The distance slider grows and shrinks the meeting area.
 
 #### Area To Area Visibility
 First mark your areas in the tools section, and select them  as A (source area) and B (target area) in the material. Here you can also choose to use the whole mesh or additional vertex groups.
