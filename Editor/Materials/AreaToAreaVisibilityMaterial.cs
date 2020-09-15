@@ -12,6 +12,7 @@ public class AreaToAreaVisibilityMaterial : ColorMaterial
 {
     [SerializeField]
     float fullHeight;
+    bool renderGreyscale;
     Vector3 full;
 
     int indexA, indexB;
@@ -225,6 +226,7 @@ public class AreaToAreaVisibilityMaterial : ColorMaterial
     public override void PreDraw( GridMesh mesh ) {
         if( isBaked ) {
             mesh.Mesh.colors = colors;
+            material.SetInt("_greyScale", renderGreyscale ? 1 : 0 );
         }
     }
 
@@ -243,6 +245,9 @@ public class AreaToAreaVisibilityMaterial : ColorMaterial
             vertexAttrName = a + "_TO_" + b + "_VISIBILITY_"+samples + "_" + check;
             maxVisibAttrName = a + "_TO_" + b + "_MAX_VISIBILITY";
             
+            GUILayout.Label("Player Height: " + fullHeight);
+            fullHeight = GUILayout.HorizontalSlider( fullHeight, 0.0f, 5.0f);
+            GUILayout.Space(10);
         
             String[] sampleChoise = {"32", "64", "128", "256", "512", "1024", "2048"};
             String[] penumbraChoise = { "8", "16", "32", "64", "128", "256", "512"};
@@ -259,7 +264,7 @@ public class AreaToAreaVisibilityMaterial : ColorMaterial
 
             
             GUILayout.Label("Number of Jobs: " + numberOfJobs);
-            numberOfJobs = Math.Min( Math.Max( (int) GUILayout.HorizontalSlider ( (float) numberOfJobs, 10.0f, 5000.0f ), 10 ), 5000);
+            numberOfJobs = Math.Min( Math.Max( (int) GUILayout.HorizontalSlider ( (float) numberOfJobs, 10.0f, 5000.0f ), 10 ), 2000);
             GUILayout.Space(10);
             GUILayout.Label("Decrease for Editor Responsiveness \nIncrease for faster render times [citation needed].");
             GUILayout.Space(10);
@@ -322,6 +327,8 @@ public class AreaToAreaVisibilityMaterial : ColorMaterial
                 GUILayout.Label("Rendertime: " + t +" seconds");
                 GUILayout.Label("Cast Rays: " + castRays);
             }
+
+            renderGreyscale = GUILayout.Toggle( renderGreyscale, "Render Greyscale" );
         }
         else {
             GUILayout.Label("Baking ... " + (int) ( Progress * 100.0f) + "%" );

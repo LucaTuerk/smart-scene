@@ -5,10 +5,6 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine.SceneManagement;
 
-
-/*
-
-*/
 public class SmartSceneWindow : EditorWindow
 {
     // Selected object in scene
@@ -198,7 +194,7 @@ public class SmartSceneWindow : EditorWindow
                 GUILayout.Space(20);
                 GUILayout.Label("General Render Settings:", subTitle);
                 GUILayout.Label("Vertical Offset");
-                verticalOffset = GUILayout.HorizontalSlider( verticalOffset, 0.05f, 2.0f );
+                verticalOffset = GUILayout.HorizontalSlider( verticalOffset, 0.0001f, 2.0f );
 
                 GUILayout.Space(20);
                 GUILayout.Label("Bake Settings:", subTitle);

@@ -125,7 +125,7 @@ public class SmartSceneTools
             if (markingMode && (e.type == EventType.MouseDrag || e.type == EventType.MouseDown) &&  e.button == 0)
             {
                 marked = true;
-                if ( groupMarking ){
+                if ( groupMarking && e.type != EventType.MouseDrag){
                     if ( SmartSceneWindow.db.offGridVertexGroups.ContainsKey( selectedGroup ) )
                         SmartSceneWindow.db.AddPosition ( selectedGroup, current.pos );
                 } else { 

@@ -16,9 +16,7 @@
             #pragma fragment frag
 
             #include "UnityCG.cginc"
-
-            sampler2D _Color;
-            int _texWidth;
+            bool _greyScale;
 
             struct appdata
             {
@@ -44,10 +42,17 @@
 
             fixed4 frag (v2f i) : SV_Target
             {
-                float4 col = lerp(float4(1,0,0,0.2), float4(0,1,0,1), i.color.r);
-                if (i.color.r == 0)
-                    col = float4(0,0,0,0);
-                
+                float4 col;
+              
+                    col = lerp(float4(1,0,0,0.2), float4(0,1,0,1), i.color.r);
+                    if (i.color.r == 0)
+                    {
+                        col = float4(0,0,0,0);
+                    }
+
+                    if( _greyScale ) 
+                        col = lerp(float4(0,0,0,0), float4(1,1,1,1), i.color.r);
+                        
                 return col;
             }
             ENDCG
