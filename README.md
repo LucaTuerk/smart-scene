@@ -10,6 +10,7 @@ To open the smart-scene editor window, choose Tools/SmartScene/Settings from the
 
 ### GridMesh Baking
 First make sure a NavMesh is baked for the scene. (See Window/AI/Navigation)
+
 Then open the GridMesh tab in the smart-scene window and set the vertex limit. 
 The initial value should be fine for medium sized levels.
 Then simply click Bake.
